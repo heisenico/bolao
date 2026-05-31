@@ -15,6 +15,15 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * A typed fetch mock: the explicit generic keeps `mock.calls` typed as the real
+ * fetch arguments ([url, init]) so the URL/header assertions type-check, while the
+ * callback itself ignores them.
+ */
+function mockFetch(impl: () => Promise<Response>) {
+  return vi.fn<typeof fetch>(impl);
+}
+
 function fdMatch(over?: Partial<FdMatch>): FdMatch {
   return {
     id: 1001,
@@ -42,7 +51,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("sends the X-Auth-Token header and competition/season query for matches", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ matches: [fdMatch()] }));
+    const fetchMock = mockFetch(async () => jsonResponse({ matches: [fdMatch()] }));
     const client = createFootballDataClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const matches = await client.getMatches();
@@ -58,7 +67,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("getTeams returns the teams array", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse(teamsBody));
+    const fetchMock = mockFetch(async () => jsonResponse(teamsBody));
     const client = createFootballDataClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const teams = await client.getTeams();
@@ -69,7 +78,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("getFinishedMatches requests the FINISHED status filter", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = mockFetch(async () =>
       jsonResponse({
         matches: [
           fdMatch({
@@ -91,7 +100,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("caches identical requests within the TTL (one network call)", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ matches: [fdMatch()] }));
+    const fetchMock = mockFetch(async () => jsonResponse({ matches: [fdMatch()] }));
     const client = createFootballDataClient({
       apiKey: "KEY123",
       fetchFn: fetchMock,
@@ -105,7 +114,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("getMatches and getFinishedMatches are cached independently (different URLs)", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ matches: [fdMatch()] }));
+    const fetchMock = mockFetch(async () => jsonResponse({ matches: [fdMatch()] }));
     const client = createFootballDataClient({
       apiKey: "KEY123",
       fetchFn: fetchMock,
@@ -119,7 +128,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("throws with status and the response message/errorCode on a 403", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = mockFetch(async () =>
       jsonResponse(
         { message: "The resource you are looking for is restricted.", errorCode: 403 },
         403,
@@ -132,14 +141,14 @@ describe("createFootballDataClient", () => {
   });
 
   it("throws with status on a 429 (rate limit) even with a non-JSON body", async () => {
-    const fetchMock = vi.fn(async () => new Response("Too Many Requests", { status: 429 }));
+    const fetchMock = mockFetch(async () => new Response("Too Many Requests", { status: 429 }));
     const client = createFootballDataClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     await expect(client.getMatches()).rejects.toThrow(/429/);
   });
 
   it("surfaces the errorCode in the thrown message when present", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = mockFetch(async () =>
       jsonResponse({ message: "Your API token is invalid.", errorCode: 400 }, 400),
     );
     const client = createFootballDataClient({ apiKey: "BAD", fetchFn: fetchMock });
