@@ -334,3 +334,24 @@ export async function applyManualResult(
     }
   })
 }
+
+/**
+ * Admin cancels a match (CONTRACT §4 / §11.8): set status=cancelada and void
+ * every prediction's points (pontosObtidos=0). Both writes run in one
+ * transaction. computeStandings sums pontosObtidos, so the now-zeroed
+ * predictions drop the cancelled match out of the ranking with no further
+ * change. The poller settles only status=agendada, so it never resurrects a
+ * cancelada match.
+ */
+export async function cancelMatch(matchId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.match.update({
+      where: { id: matchId },
+      data: { status: 'cancelada' },
+    }),
+    prisma.prediction.updateMany({
+      where: { matchId },
+      data: { pontosObtidos: 0 },
+    }),
+  ])
+}
