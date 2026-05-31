@@ -1,6 +1,17 @@
-import type { ApiFixture } from '@/lib/apiFootball'
+import { prisma } from '@/lib/prisma'
+import {
+  createApiFootballClient,
+  type ApiFootballClient,
+  type ApiFixture,
+} from '@/lib/apiFootball'
+import { env } from '@/lib/env'
 import type { Score } from '@/domain/scoring'
 import type { MatchPhase } from '@prisma/client'
+
+/** Builds the default API client from env (server-only). */
+export function defaultClient(): ApiFootballClient {
+  return createApiFootballClient({ apiKey: env.apiFootballKey() })
+}
 
 /** True when the API fixture carries both final goal counts. */
 export function hasFinalScore(fixture: ApiFixture): boolean {
@@ -39,4 +50,66 @@ export function roundToPhase(round: string): MatchPhase {
   if (r.includes('3rd') || r.includes('third')) return 'terceiro'
   if (r.includes('final')) return 'final'
   return 'grupos'
+}
+
+/**
+ * Syncs teams + fixtures from API-Football into Team/Match, keyed by apiFootballId.
+ * Idempotent: upserts by apiFootballId, never duplicates. Returns counts.
+ * The API client is injectable so tests never hit the network (CONTRACT §8, §1 budget).
+ */
+export async function syncFixtures(
+  opts: { client?: ApiFootballClient } = {},
+): Promise<{ teams: number; matches: number }> {
+  const client = opts.client ?? defaultClient()
+
+  const apiTeams = await client.getTeams()
+  for (const entry of apiTeams) {
+    await prisma.team.upsert({
+      where: { apiFootballId: entry.team.id },
+      update: { nome: entry.team.name, codigoPais: entry.team.code ?? '' },
+      create: {
+        nome: entry.team.name,
+        codigoPais: entry.team.code ?? '',
+        apiFootballId: entry.team.id,
+      },
+    })
+  }
+
+  // Map apiFootballId -> our Team.id for FK wiring.
+  const teamRows = await prisma.team.findMany({
+    where: { apiFootballId: { not: null } },
+    select: { id: true, apiFootballId: true },
+  })
+  const teamIdByApiId = new Map<number, string>()
+  for (const t of teamRows) {
+    if (t.apiFootballId != null) teamIdByApiId.set(t.apiFootballId, t.id)
+  }
+
+  const apiFixtures = await client.getFixtures()
+  let matchCount = 0
+  for (const fx of apiFixtures) {
+    const homeId = teamIdByApiId.get(fx.teams.home.id)
+    const awayId = teamIdByApiId.get(fx.teams.away.id)
+    if (!homeId || !awayId) continue // skip fixtures whose teams we did not sync
+
+    await prisma.match.upsert({
+      where: { apiFootballId: fx.fixture.id },
+      update: {
+        homeTeamId: homeId,
+        awayTeamId: awayId,
+        dataHora: new Date(fx.fixture.date),
+        fase: roundToPhase(fx.league.round),
+      },
+      create: {
+        fase: roundToPhase(fx.league.round),
+        homeTeamId: homeId,
+        awayTeamId: awayId,
+        dataHora: new Date(fx.fixture.date),
+        apiFootballId: fx.fixture.id,
+      },
+    })
+    matchCount++
+  }
+
+  return { teams: apiTeams.length, matches: matchCount }
 }
