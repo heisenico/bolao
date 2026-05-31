@@ -27,6 +27,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
+    // Integration test files share one Postgres `schema=test`, and the global
+    // `afterEach` cleanup in vitest.setup.ts truncates every table. Running test
+    // files in parallel lets one file's cleanup delete rows another file is mid-
+    // test on (FK violations / "Invite code not found"). Serialize files so the
+    // shared-schema cleanup is correct; tests within a file already run in order.
+    fileParallelism: false,
     server: {
       deps: {
         // Inline next-auth so Vite (not Node's native resolver) processes its
