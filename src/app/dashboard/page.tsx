@@ -1,22 +1,119 @@
 import { requireSession } from "@/lib/session";
 import { signOut } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { LOCK_LEAD_MS, isMatchLocked } from "@/domain/deadline";
+import { getCurrentMembership } from "@/server/pools";
+import { Flag } from "@/components/Flag";
 import { Button } from "@/components/Button";
+import { AutoRefresh } from "@/components/AutoRefresh";
+
+function formatSaoPaulo(d: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+async function logout() {
+  "use server";
+  await signOut({ redirectTo: "/login" });
+}
 
 export default async function DashboardPage() {
   const session = await requireSession();
 
-  async function logout() {
-    "use server";
-    await signOut({ redirectTo: "/login" });
+  const membership = await getCurrentMembership(session.user.id);
+  if (!membership) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-sm text-[#555555]">
+          Você está logado como{" "}
+          <span className="font-medium">{session.user?.email}</span>.
+        </p>
+        <p>Você ainda não entrou em um bolão.</p>
+        <a href="/pools/new" className="text-verde-acao underline">
+          Criar um bolão
+        </a>
+        <form action={logout}>
+          <Button type="submit" variant="secondary">
+            Sair
+          </Button>
+        </form>
+      </main>
+    );
   }
+
+  const now = new Date();
+
+  const nextMatches = await prisma.match.findMany({
+    where: { status: { in: ["agendada", "ao_vivo"] } },
+    orderBy: { dataHora: "asc" },
+    take: 5,
+    include: { homeTeam: true, awayTeam: true },
+  });
+
+  const predictions = await prisma.prediction.findMany({
+    where: {
+      membershipId: membership.id,
+      matchId: { in: nextMatches.map((m) => m.id) },
+    },
+  });
+  const predicted = new Set(predictions.map((p) => p.matchId));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="text-sm text-[#555555]">
-        Você está logado como{" "}
-        <span className="font-medium">{session.user?.email}</span>.
-      </p>
+      <AutoRefresh />
+      <h1 className="text-2xl font-bold">Próximos jogos</h1>
+
+      {nextMatches.length === 0 ? (
+        <p>Nenhum jogo agendado.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {nextMatches.map((m) => {
+            const locked = isMatchLocked(m.dataHora, now);
+            const deadline = new Date(m.dataHora.getTime() - LOCK_LEAD_MS);
+            const done = predicted.has(m.id);
+            return (
+              <li
+                key={m.id}
+                className="flex flex-col gap-1 rounded-md border border-borda p-4"
+              >
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="flex items-center gap-2">
+                    <Flag codigoPais={m.homeTeam.codigoPais} />
+                    {m.homeTeam.nome}
+                  </span>
+                  <span>x</span>
+                  <span className="flex items-center gap-2">
+                    {m.awayTeam.nome}
+                    <Flag codigoPais={m.awayTeam.codigoPais} />
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-[#444444]">
+                  <span>Jogo: {formatSaoPaulo(m.dataHora)}</span>
+                  <span>Prazo: {formatSaoPaulo(deadline)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={done ? "text-verde-acao" : "text-[#888888]"}>
+                    {done ? "palpite feito" : "palpite pendente"}
+                  </span>
+                  <span className="text-[#888888]">
+                    {locked ? "travado" : "aberto"}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <a href="/palpites" className="text-verde-acao underline">
+        Fazer/editar palpites
+      </a>
       <form action={logout}>
         <Button type="submit" variant="secondary">
           Sair
