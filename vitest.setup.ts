@@ -34,31 +34,19 @@ if (!UNIT_ONLY) {
   afterEach(async () => {
     // Imported lazily so unit runs never load Prisma (or the dev `.env`).
     const { prisma } = await import("@/lib/prisma");
-    // Delete child-first to respect FK constraints.
-    // Domain tables (prediction → paymentRecord → membership → pool → match → team)
-    // arrive in later plans; deleteMany on a not-yet-created table would throw,
-    // so each is wrapped to no-op until its migration exists.
-    // Domain model delegates don't exist on the typed client until Plan B's
-    // migrations land; reach them through a structural cast (no `any`) so each
-    // no-ops until its table exists. Plan B replaces these with typed calls.
-    type Deletable = { deleteMany: () => Promise<unknown> };
-    const futureModels = prisma as unknown as Record<string, Deletable | undefined>;
-    const deletions: Array<() => Promise<unknown> | undefined> = [
-      () => futureModels.prediction?.deleteMany(),
-      () => futureModels.paymentRecord?.deleteMany(),
-      () => futureModels.poolMembership?.deleteMany(),
-      () => futureModels.pool?.deleteMany(),
-      () => futureModels.match?.deleteMany(),
-      () => futureModels.team?.deleteMany(),
-      () => prisma.session.deleteMany(),
-      () => prisma.account.deleteMany(),
-      () => prisma.verificationToken.deleteMany(),
-      () => prisma.user.deleteMany(),
-    ];
-    for (const del of deletions) {
-      const result = del();
-      if (result) await result;
-    }
+    // Delete child-first to respect FK constraints. Plan B's domain tables now
+    // exist, so these are live typed deletes (prediction → paymentRecord →
+    // poolMembership → pool → match → team → auth models).
+    await prisma.prediction.deleteMany();
+    await prisma.paymentRecord.deleteMany();
+    await prisma.poolMembership.deleteMany();
+    await prisma.pool.deleteMany();
+    await prisma.match.deleteMany();
+    await prisma.team.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.account.deleteMany();
+    await prisma.verificationToken.deleteMany();
+    await prisma.user.deleteMany();
   });
 
   afterAll(async () => {

@@ -18,6 +18,8 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  memberships   PoolMembership[]
+  ownedPools    Pool[]    @relation("PoolOwner")
   createdAt     DateTime  @default(now())
 }
 
@@ -53,4 +55,118 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ---------- Domain ----------
+enum PoolStatus {
+  aberto
+  fechado
+}
+
+enum PaymentStatus {
+  pendente
+  pago
+  confirmado
+}
+
+enum MatchPhase {
+  grupos
+  r32
+  oitavas
+  quartas
+  semi
+  terceiro
+  final
+}
+
+enum MatchStatus {
+  agendada
+  ao_vivo
+  encerrada
+  adiada
+  cancelada
+}
+
+enum ResultadoFonte {
+  api
+  manual
+}
+
+model Pool {
+  id           String           @id @default(cuid())
+  nome         String
+  inviteCode   String           @unique
+  ownerId      String
+  owner        User             @relation("PoolOwner", fields: [ownerId], references: [id])
+  valorEntrada Int              // BRL cents
+  chavePix     String
+  status       PoolStatus       @default(aberto)
+  createdAt    DateTime         @default(now())
+  memberships  PoolMembership[]
+}
+
+model PoolMembership {
+  id            String        @id @default(cuid())
+  poolId        String
+  userId        String
+  pool          Pool          @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime      @default(now())   // tiebreaker
+  paymentStatus PaymentStatus @default(pendente)
+  predictions   Prediction[]
+  payments      PaymentRecord[]
+
+  @@unique([poolId, userId])
+}
+
+model Team {
+  id           String  @id @default(cuid())
+  nome         String
+  codigoPais   String                  // ISO-ish code for flag
+  grupo        String?                 // "A".."L"
+  apiFootballId Int?   @unique
+  homeMatches  Match[] @relation("HomeTeam")
+  awayMatches  Match[] @relation("AwayTeam")
+}
+
+model Match {
+  id            String       @id @default(cuid())
+  fase          MatchPhase
+  homeTeamId    String
+  awayTeamId    String
+  homeTeam      Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam      Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  dataHora      DateTime                  // kickoff, stored UTC
+  placarHome    Int?
+  placarAway    Int?
+  status        MatchStatus  @default(agendada)
+  resultadoFonte ResultadoFonte?
+  apiFootballId Int?         @unique
+  predictions   Prediction[]
+}
+
+model Prediction {
+  id           String         @id @default(cuid())
+  membershipId String
+  matchId      String
+  membership   PoolMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  match        Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  palpiteHome  Int
+  palpiteAway  Int
+  pontosObtidos Int           @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([membershipId, matchId])
+}
+
+model PaymentRecord {
+  id            String         @id @default(cuid())
+  membershipId  String
+  membership    PoolMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  valor         Int            // BRL cents
+  metodo        String         @default("PIX")
+  comprovanteRef String?
+  confirmadoPor String?
+  confirmadoEm  DateTime?
 }
