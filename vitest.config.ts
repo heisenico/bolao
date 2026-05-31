@@ -33,6 +33,11 @@ export default defineConfig({
     // test on (FK violations / "Invite code not found"). Serialize files so the
     // shared-schema cleanup is correct; tests within a file already run in order.
     fileParallelism: false,
+    // beforeAll runs `prisma migrate deploy` against remote Neon (sa-east-1) and
+    // afterEach truncates over the network; the 10s default hook timeout flakes
+    // (Vitest then marks the file's tests "skipped"). Give the network room.
+    hookTimeout: 60000,
+    testTimeout: 30000,
     server: {
       deps: {
         // Inline next-auth so Vite (not Node's native resolver) processes its
