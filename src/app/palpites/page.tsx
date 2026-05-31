@@ -114,7 +114,11 @@ export default async function PalpitesPage({
               <input type="hidden" name="matchId" value={m.id} />
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 font-semibold">
-                  <Flag codigoPais={m.homeTeam.codigoPais} />
+                  <Flag
+                    codigoPais={m.homeTeam.codigoPais}
+                    bandeira={m.homeTeam.bandeira}
+                    className="h-4 w-6 object-cover"
+                  />
                   {m.homeTeam.nome}
                 </span>
                 <input
@@ -136,12 +140,23 @@ export default async function PalpitesPage({
                 />
                 <span className="flex items-center gap-2 font-semibold">
                   {m.awayTeam.nome}
-                  <Flag codigoPais={m.awayTeam.codigoPais} />
+                  <Flag
+                    codigoPais={m.awayTeam.codigoPais}
+                    bandeira={m.awayTeam.bandeira}
+                    className="h-4 w-6 object-cover"
+                  />
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className={pred ? "text-verde-acao" : "text-[#888888]"}>
-                  {pred ? "feito" : "pendente"}
+                <span className="flex items-center gap-2">
+                  <span className={pred ? "text-verde-acao" : "text-[#888888]"}>
+                    {pred ? "feito" : "pendente"}
+                  </span>
+                  {m.homeTeam.grupo ? (
+                    <span className="rounded bg-fundo-secao px-2 py-0.5 text-xs text-[#666666]">
+                      Grupo {m.homeTeam.grupo}
+                    </span>
+                  ) : null}
                 </span>
                 {locked ? (
                   <span className="text-[#888888]">travado</span>

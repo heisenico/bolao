@@ -100,6 +100,11 @@ export function statusToMatchStatus(status: string): MatchStatus {
  * §11.10). Idempotent: upserts by id, never duplicates. Returns counts.
  * The client is injectable so tests never hit the network (CONTRACT §8, §11.10).
  *
+ * Team metadata is stable, so both create and update set nome/codigoPais/bandeira
+ * (crest URL) and grupo. grupo comes from the GROUP_STAGE matches: a team's group
+ * letter is read off any group-stage match it plays in (`"GROUP_A"` -> `"A"`).
+ * Teams that appear only in knockout placeholders keep grupo = null.
+ *
  * create: connect home/away by FD team id, dataHora from utcDate, fase from stage,
  *   status=agendada, apiFootballId=FD match id.
  * update: refresh ONLY dataHora + fase. Never reverts status/placar/resultadoFonte,
@@ -110,14 +115,37 @@ export async function syncFixtures(
 ): Promise<{ teams: number; matches: number }> {
   const client = opts.client ?? defaultClient()
 
+  const fdMatches = await client.getMatches()
+
+  // Group letter per team, derived from group-stage matches. Both teams of a
+  // GROUP_STAGE match whose `group` is set ("GROUP_A") get that letter ("A").
+  const groupByFdTeamId = new Map<number, string>()
+  for (const m of fdMatches) {
+    if (m.stage !== 'GROUP_STAGE' || !m.group) continue
+    const letter = m.group.startsWith('GROUP_')
+      ? m.group.slice('GROUP_'.length)
+      : m.group
+    if (!letter) continue
+    groupByFdTeamId.set(m.homeTeam.id, letter)
+    groupByFdTeamId.set(m.awayTeam.id, letter)
+  }
+
   const fdTeams = await client.getTeams()
   for (const team of fdTeams) {
+    const grupo = groupByFdTeamId.get(team.id) ?? null
     await prisma.team.upsert({
       where: { apiFootballId: team.id },
-      update: { nome: team.name, codigoPais: team.tla ?? '' },
+      update: {
+        nome: team.name,
+        codigoPais: team.tla ?? '',
+        bandeira: team.crest ?? null,
+        grupo,
+      },
       create: {
         nome: team.name,
         codigoPais: team.tla ?? '',
+        bandeira: team.crest ?? null,
+        grupo,
         apiFootballId: team.id,
       },
     })
@@ -133,7 +161,6 @@ export async function syncFixtures(
     if (t.apiFootballId != null) teamIdByFdId.set(t.apiFootballId, t.id)
   }
 
-  const fdMatches = await client.getMatches()
   let matchCount = 0
   for (const m of fdMatches) {
     const homeId = teamIdByFdId.get(m.homeTeam.id)

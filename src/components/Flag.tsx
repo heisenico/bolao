@@ -2,6 +2,8 @@ import * as React from "react";
 
 export interface FlagProps {
   codigoPais: string;
+  /** Crest/flag image URL (football-data.org). Preferred over the emoji when set. */
+  bandeira?: string | null;
   className?: string;
 }
 
@@ -23,10 +25,18 @@ function toFlagEmoji(code: string): string | null {
 }
 
 /**
- * Renders a country flag from `codigoPais`. Falls back to the raw code
- * (trimmed) when it cannot be mapped to a flag emoji.
+ * Renders a team flag. When `bandeira` is a non-empty URL, renders that crest
+ * image (alt = codigoPais). Otherwise falls back to the regional-indicator emoji
+ * from `codigoPais`, then to the raw code (trimmed) when it is not a 2-letter code.
  */
-export function Flag({ codigoPais, className }: FlagProps) {
+export function Flag({ codigoPais, bandeira, className }: FlagProps) {
+  if (bandeira && bandeira.trim() !== "") {
+    return (
+      // Plain <img> (not next/image): remote crest URLs, no loader config in v1.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={bandeira} alt={codigoPais} className={className} />
+    );
+  }
   const flag = toFlagEmoji(codigoPais);
   return (
     <span className={className} aria-label={codigoPais} role="img">

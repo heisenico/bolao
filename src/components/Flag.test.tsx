@@ -30,4 +30,23 @@ describe("Flag", () => {
     render(<Flag codigoPais="AR" className="text-2xl" />);
     expect(screen.getByText("\u{1F1E6}\u{1F1F7}")).toHaveClass("text-2xl");
   });
+
+  it("renders an <img> with the crest src + code alt when bandeira is set", () => {
+    const url = "https://crests.football-data.org/764.png";
+    render(<Flag codigoPais="BRA" bandeira={url} className="h-5 w-7" />);
+    const img = screen.getByAltText("BRA");
+    expect(img.tagName).toBe("IMG");
+    expect(img).toHaveAttribute("src", url);
+    expect(img).toHaveClass("h-5", "w-7");
+  });
+
+  it("falls back to the emoji when bandeira is null", () => {
+    render(<Flag codigoPais="BR" bandeira={null} />);
+    expect(screen.getByText("\u{1F1E7}\u{1F1F7}")).toBeInTheDocument();
+  });
+
+  it("falls back to the emoji when bandeira is an empty string", () => {
+    render(<Flag codigoPais="BR" bandeira="" />);
+    expect(screen.getByText("\u{1F1E7}\u{1F1F7}")).toBeInTheDocument();
+  });
 });

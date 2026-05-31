@@ -84,13 +84,21 @@ export default async function DashboardPage() {
               >
                 <div className="flex items-center justify-between font-semibold">
                   <span className="flex items-center gap-2">
-                    <Flag codigoPais={m.homeTeam.codigoPais} />
+                    <Flag
+                      codigoPais={m.homeTeam.codigoPais}
+                      bandeira={m.homeTeam.bandeira}
+                      className="h-4 w-6 object-cover"
+                    />
                     {m.homeTeam.nome}
                   </span>
                   <span>x</span>
                   <span className="flex items-center gap-2">
                     {m.awayTeam.nome}
-                    <Flag codigoPais={m.awayTeam.codigoPais} />
+                    <Flag
+                      codigoPais={m.awayTeam.codigoPais}
+                      bandeira={m.awayTeam.bandeira}
+                      className="h-4 w-6 object-cover"
+                    />
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-[#444444]">
