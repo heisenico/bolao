@@ -53,3 +53,4 @@ next-env.d.ts
 
 # Worktrees (isolated workspaces)
 /.worktrees/
+/.claude/worktrees/
