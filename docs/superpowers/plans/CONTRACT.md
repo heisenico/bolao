@@ -418,6 +418,7 @@ All call sites use **function-call** form: `env.apiFootballKey()`, `env.pollSecr
 ### 11.8 Cancelled matches + W.O. (Plan D)
 - Admin can mark a match **`cancelada`**: sets `status=cancelada` and zeroes/annuls (`pontosObtidos=0`) all its predictions; `computeStandings` ignores cancelled matches. `pollAndSettle` skips `cancelada`/`adiada` (only settles `agendada`→`encerrada`).
 - **W.O.** is just a normal manual result (e.g. `3×0`) via `applyManualResult`; no special path. Add a one-line note.
+- **PITFALL (implemented):** `pollAndSettle`'s candidate filter must NOT use `resultadoFonte: { not: 'manual' }` — Prisma compiles that to `<> 'manual'`, which is `NULL` (not true) for freshly-synced rows where `resultadoFonte` is unset, silently excluding ALL settleable matches. The implemented, correct form is `OR: [{ resultadoFonte: null }, { resultadoFonte: 'api' }]`. **Plan D must NOT re-add `{ not: 'manual' }`** — the manual-skip is already correctly handled in `pollAndSettle`.
 
 ### 11.9 Updated file-map additions
 ```
