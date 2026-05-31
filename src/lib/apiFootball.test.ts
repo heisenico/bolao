@@ -39,7 +39,9 @@ describe("createApiFootballClient", () => {
   });
 
   it("sends the api key header and league/season query for fixtures", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse(fixturesBody));
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(fixturesBody),
+    );
     const client = createApiFootballClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const fixtures = await client.getFixtures();
@@ -49,13 +51,15 @@ describe("createApiFootballClient", () => {
     expect(String(url)).toContain(`${API_FOOTBALL_BASE_URL}/fixtures`);
     expect(String(url)).toContain(`league=${WC_LEAGUE}`);
     expect(String(url)).toContain(`season=${WC_SEASON}`);
-    expect((init as RequestInit).headers).toMatchObject({ "x-apisports-key": "KEY123" });
+    expect(init?.headers).toMatchObject({ "x-apisports-key": "KEY123" });
     expect(fixtures).toHaveLength(1);
     expect(fixtures[0].fixture.id).toBe(1001);
   });
 
   it("getTeams returns the response array", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse(teamsBody));
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(teamsBody),
+    );
     const client = createApiFootballClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const teams = await client.getTeams();
@@ -111,7 +115,7 @@ describe("createApiFootballClient", () => {
 
     // The ApiFixture surface has no penalty field at all — goals is the only score.
     expect(finished[0].goals).toEqual({ home: 1, away: 1 });
-    expect("penalty" in (finished[0] as Record<string, unknown>)).toBe(false);
+    expect("penalty" in (finished[0] as unknown as Record<string, unknown>)).toBe(false);
   });
 
   it("throws on non-2xx responses", async () => {
