@@ -20,5 +20,6 @@ export const env = {
   emailFrom: () => process.env.AUTH_EMAIL_FROM ?? "Bolão da Copa <onboarding@resend.dev>",
   authUrl: () => process.env.AUTH_URL ?? "http://localhost:3000",
   apiFootballKey: () => requireEnv("API_FOOTBALL_KEY"),
+  footballDataKey: () => requireEnv("FOOTBALL_DATA_KEY"),
   pollSecret: () => requireEnv("POLL_SECRET"),
 };
