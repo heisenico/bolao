@@ -38,13 +38,18 @@ if (!UNIT_ONLY) {
     // Domain tables (prediction → paymentRecord → membership → pool → match → team)
     // arrive in later plans; deleteMany on a not-yet-created table would throw,
     // so each is wrapped to no-op until its migration exists.
-    const deletions: Array<() => Promise<unknown>> = [
-      () => (prisma as Record<string, any>).prediction?.deleteMany(),
-      () => (prisma as Record<string, any>).paymentRecord?.deleteMany(),
-      () => (prisma as Record<string, any>).poolMembership?.deleteMany(),
-      () => (prisma as Record<string, any>).pool?.deleteMany(),
-      () => (prisma as Record<string, any>).match?.deleteMany(),
-      () => (prisma as Record<string, any>).team?.deleteMany(),
+    // Domain model delegates don't exist on the typed client until Plan B's
+    // migrations land; reach them through a structural cast (no `any`) so each
+    // no-ops until its table exists. Plan B replaces these with typed calls.
+    type Deletable = { deleteMany: () => Promise<unknown> };
+    const futureModels = prisma as unknown as Record<string, Deletable | undefined>;
+    const deletions: Array<() => Promise<unknown> | undefined> = [
+      () => futureModels.prediction?.deleteMany(),
+      () => futureModels.paymentRecord?.deleteMany(),
+      () => futureModels.poolMembership?.deleteMany(),
+      () => futureModels.pool?.deleteMany(),
+      () => futureModels.match?.deleteMany(),
+      () => futureModels.team?.deleteMany(),
       () => prisma.session.deleteMany(),
       () => prisma.account.deleteMany(),
       () => prisma.verificationToken.deleteMany(),
