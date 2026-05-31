@@ -5,7 +5,7 @@ import {
   type ApiFixture,
 } from '@/lib/apiFootball'
 import { env } from '@/lib/env'
-import type { Score } from '@/domain/scoring'
+import { scorePrediction, type Score } from '@/domain/scoring'
 import type { MatchPhase } from '@prisma/client'
 
 /** Builds the default API client from env (server-only). */
@@ -112,4 +112,87 @@ export async function syncFixtures(
   }
 
   return { teams: apiTeams.length, matches: matchCount }
+}
+
+/** A match window stays "open for polling" from kickoff to kickoff + this. */
+export const MATCH_WINDOW_DURATION_MS = 3 * 60 * 60 * 1000 // 3h: 90' + ET + stoppage + settle lag
+
+/**
+ * Polls finished fixtures and settles matches, but only when `now` falls inside
+ * an open match window (an agendada match whose [dataHora, dataHora+window] contains now).
+ * Outside every window: no-op, no API call (preserves the 100 req/day budget).
+ *
+ * Candidate gate (CONTRACT §11.8): status agendada, resultadoFonte != manual (so a
+ * manual result is never overwritten — defense-in-depth even though manual matches
+ * are already non-agendada), dataHora within [now - window, now], apiFootballId set.
+ *
+ * For each candidate whose API fixture is final (matched by apiFootballId): writes
+ * placarHome/placarAway + status=encerrada + resultadoFonte=api, then recomputes
+ * pontosObtidos for that match's predictions via scorePrediction. Idempotent:
+ * settled matches are no longer agendada, so they fall out of the candidate gate.
+ */
+export async function pollAndSettle(
+  opts: { now?: Date; client?: ApiFootballClient } = {},
+): Promise<{ settledMatchIds: string[] }> {
+  const now = opts.now ?? new Date()
+
+  // Find pending matches whose window currently contains `now`.
+  const windowStartFloor = new Date(now.getTime() - MATCH_WINDOW_DURATION_MS)
+  const openMatches = await prisma.match.findMany({
+    where: {
+      status: 'agendada',
+      // Skip manual results (CONTRACT §11.8) but keep matches whose source is still
+      // unset (NULL): a bare `{ not: 'manual' }` would drop NULL rows because SQL
+      // `resultadoFonte <> 'manual'` is NULL (not true) for them, so include NULL
+      // explicitly. Manual results are also already non-agendada (defense-in-depth).
+      OR: [{ resultadoFonte: null }, { resultadoFonte: 'api' }],
+      dataHora: { lte: now, gte: windowStartFloor },
+      apiFootballId: { not: null },
+    },
+    select: { id: true, apiFootballId: true },
+  })
+
+  if (openMatches.length === 0) {
+    return { settledMatchIds: [] }
+  }
+
+  const client = opts.client ?? defaultClient()
+  const finished = await client.getFinishedFixtures()
+  const finishedByApiId = new Map<number, ApiFixture>()
+  for (const fx of finished) {
+    finishedByApiId.set(fx.fixture.id, fx)
+  }
+
+  const settledMatchIds: string[] = []
+
+  for (const m of openMatches) {
+    if (m.apiFootballId == null) continue
+    const fx = finishedByApiId.get(m.apiFootballId)
+    if (!fx || !hasFinalScore(fx)) continue
+
+    const score = fixtureToScore(fx)
+
+    await prisma.match.update({
+      where: { id: m.id },
+      data: {
+        placarHome: score.home,
+        placarAway: score.away,
+        status: 'encerrada',
+        resultadoFonte: 'api',
+      },
+    })
+
+    const predictions = await prisma.prediction.findMany({ where: { matchId: m.id } })
+    for (const p of predictions) {
+      const pontos = scorePrediction({ home: p.palpiteHome, away: p.palpiteAway }, score)
+      await prisma.prediction.update({
+        where: { id: p.id },
+        data: { pontosObtidos: pontos },
+      })
+    }
+
+    settledMatchIds.push(m.id)
+  }
+
+  return { settledMatchIds }
 }
