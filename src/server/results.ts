@@ -376,6 +376,8 @@ export async function getKnockoutMatches(): Promise<BracketMatch[]> {
     awayNome: m.awayTeam.nome,
     homeCodigoPais: m.homeTeam.codigoPais,
     awayCodigoPais: m.awayTeam.codigoPais,
+    homeBandeira: m.homeTeam.bandeira,
+    awayBandeira: m.awayTeam.bandeira,
     placarHome: m.placarHome,
     placarAway: m.placarAway,
   }))

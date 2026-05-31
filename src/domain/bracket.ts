@@ -21,6 +21,8 @@ export interface BracketMatch {
   awayNome: string
   homeCodigoPais: string
   awayCodigoPais: string
+  homeBandeira: string | null
+  awayBandeira: string | null
   placarHome: number | null
   placarAway: number | null
 }

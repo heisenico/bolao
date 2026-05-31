@@ -11,6 +11,8 @@ function m(over: Partial<BracketMatch>): BracketMatch {
     awayNome: over.awayNome ?? 'B',
     homeCodigoPais: over.homeCodigoPais ?? 'AA',
     awayCodigoPais: over.awayCodigoPais ?? 'BB',
+    homeBandeira: over.homeBandeira ?? null,
+    awayBandeira: over.awayBandeira ?? null,
     placarHome: over.placarHome ?? null,
     placarAway: over.placarAway ?? null,
   }

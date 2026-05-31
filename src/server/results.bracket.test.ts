@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { getKnockoutMatches } from '@/server/results'
 
-async function team(nome: string, codigoPais: string) {
-  return prisma.team.create({ data: { nome, codigoPais } })
+async function team(nome: string, codigoPais: string, bandeira?: string) {
+  return prisma.team.create({ data: { nome, codigoPais, bandeira } })
 }
 
 describe('getKnockoutMatches', () => {
   it('returns only knockout matches mapped to BracketMatch shape', async () => {
     const a = await team('Brasil', 'BR')
     const b = await team('Croacia', 'HR')
-    const c = await team('Espanha', 'ES')
+    const c = await team('Espanha', 'ES', 'https://crests.football-data.org/760.png')
     const d = await team('Italia', 'IT')
 
     await prisma.match.create({
@@ -42,6 +42,8 @@ describe('getKnockoutMatches', () => {
     expect(rows[0].homeNome).toBe('Espanha')
     expect(rows[0].awayNome).toBe('Italia')
     expect(rows[0].homeCodigoPais).toBe('ES')
+    expect(rows[0].homeBandeira).toBe('https://crests.football-data.org/760.png')
+    expect(rows[0].awayBandeira).toBeNull()
     expect(rows[0].placarHome).toBe(1)
     expect(rows[0].placarAway).toBe(0)
     expect(rows[0].dataHora).toBeInstanceOf(Date)
