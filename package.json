@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "dotenv -e .env.test -- vitest",
+    "test:run": "dotenv -e .env.test -- vitest run",
+    "test:unit": "VITEST_UNIT=1 vitest run src/domain"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
