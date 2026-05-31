@@ -1,138 +1,186 @@
 import { prisma } from '@/lib/prisma'
 import {
-  createApiFootballClient,
-  type ApiFootballClient,
-  type ApiFixture,
-} from '@/lib/apiFootball'
-import { env } from '@/lib/env'
+  defaultFootballDataClient,
+  type FootballDataClient,
+  type FdMatch,
+} from '@/lib/footballData'
 import { scorePrediction, type Score } from '@/domain/scoring'
-import type { MatchPhase } from '@prisma/client'
+import type { MatchPhase, MatchStatus } from '@prisma/client'
 
-/** Builds the default API client from env (server-only). */
-export function defaultClient(): ApiFootballClient {
-  return createApiFootballClient({ apiKey: env.apiFootballKey() })
-}
-
-/** True when the API fixture carries both final goal counts. */
-export function hasFinalScore(fixture: ApiFixture): boolean {
-  return typeof fixture.goals.home === 'number' && typeof fixture.goals.away === 'number'
+/** Builds the default football-data.org client from env (server-only). */
+export function defaultClient(): FootballDataClient {
+  return defaultFootballDataClient()
 }
 
 /**
- * Extracts the final Score from an API fixture. Throws if not final.
- * Reads `fixture.goals` only — the score after normal + extra time. Any penalty
- * shootout lives in `score.penalty` (not modeled) and is intentionally excluded
- * (CONTRACT §4, §11.6): a 1-1 that went to penalties scores as a draw here.
+ * True when the match is over and the final score is authoritative: FINISHED and
+ * both fullTime goal counts present (CONTRACT §11.10).
  */
-export function fixtureToScore(fixture: ApiFixture): Score {
-  if (!hasFinalScore(fixture)) {
-    throw new Error('Fixture has no final score')
+export function hasFinalScore(match: FdMatch): boolean {
+  return (
+    match.status === 'FINISHED' &&
+    typeof match.score.fullTime.home === 'number' &&
+    typeof match.score.fullTime.away === 'number'
+  )
+}
+
+/**
+ * Extracts the final Score from a football-data.org match. Throws if not final.
+ * Reads `score.fullTime` only — the result after normal + extra time. Any penalty
+ * shootout is NOT reflected there (CONTRACT §4, §11.10): a 1-1 that went to
+ * penalties scores as a draw here.
+ */
+export function fixtureToScore(match: FdMatch): Score {
+  if (!hasFinalScore(match)) {
+    throw new Error('Match has no final score')
   }
-  return { home: fixture.goals.home as number, away: fixture.goals.away as number }
+  return {
+    home: match.score.fullTime.home as number,
+    away: match.score.fullTime.away as number,
+  }
 }
 
 /**
- * Maps an API-Football round label to our MatchPhase (CONTRACT §11.6).
- *   Group -> grupos, Round of 32 -> r32, Round of 16 -> oitavas,
- *   Quarter-finals -> quartas, Semi-finals -> semi,
- *   3rd Place Final -> terceiro, Final -> final.
- * Unknown/empty rounds default to grupos. Order matters: the "3rd Place" and
- * "Semi"/"Quarter" checks run before the bare "final" check so they are not
- * mis-mapped to MatchPhase.final.
+ * Maps a football-data.org stage to our MatchPhase (CONTRACT §11.10).
+ *   GROUP_STAGE -> grupos, LAST_32 -> r32, LAST_16 -> oitavas,
+ *   QUARTER_FINALS -> quartas, SEMI_FINALS -> semi,
+ *   THIRD_PLACE -> terceiro, FINAL -> final.
+ * Unknown/empty stages default to grupos.
  */
-export function roundToPhase(round: string): MatchPhase {
-  const r = (round ?? '').toLowerCase()
-  if (r.includes('group')) return 'grupos'
-  if (r.includes('round of 32')) return 'r32'
-  if (r.includes('round of 16')) return 'oitavas'
-  if (r.includes('quarter')) return 'quartas'
-  if (r.includes('semi')) return 'semi'
-  if (r.includes('3rd') || r.includes('third')) return 'terceiro'
-  if (r.includes('final')) return 'final'
-  return 'grupos'
+export function stageToPhase(stage: string): MatchPhase {
+  switch (stage) {
+    case 'GROUP_STAGE':
+      return 'grupos'
+    case 'LAST_32':
+      return 'r32'
+    case 'LAST_16':
+      return 'oitavas'
+    case 'QUARTER_FINALS':
+      return 'quartas'
+    case 'SEMI_FINALS':
+      return 'semi'
+    case 'THIRD_PLACE':
+      return 'terceiro'
+    case 'FINAL':
+      return 'final'
+    default:
+      return 'grupos'
+  }
 }
 
 /**
- * Syncs teams + fixtures from API-Football into Team/Match, keyed by apiFootballId.
- * Idempotent: upserts by apiFootballId, never duplicates. Returns counts.
- * The API client is injectable so tests never hit the network (CONTRACT §8, §1 budget).
+ * Maps a football-data.org status to our MatchStatus (CONTRACT §11.10).
+ *   SCHEDULED|TIMED -> agendada, IN_PLAY|PAUSED -> ao_vivo, FINISHED -> encerrada,
+ *   POSTPONED -> adiada, CANCELLED|SUSPENDED -> cancelada.
+ * Unknown statuses default to agendada.
+ */
+export function statusToMatchStatus(status: string): MatchStatus {
+  switch (status) {
+    case 'SCHEDULED':
+    case 'TIMED':
+      return 'agendada'
+    case 'IN_PLAY':
+    case 'PAUSED':
+      return 'ao_vivo'
+    case 'FINISHED':
+      return 'encerrada'
+    case 'POSTPONED':
+      return 'adiada'
+    case 'CANCELLED':
+    case 'SUSPENDED':
+      return 'cancelada'
+    default:
+      return 'agendada'
+  }
+}
+
+/**
+ * Syncs teams + matches from football-data.org into Team/Match, keyed by the FD
+ * id stored in the existing `apiFootballId` columns (no migration — CONTRACT
+ * §11.10). Idempotent: upserts by id, never duplicates. Returns counts.
+ * The client is injectable so tests never hit the network (CONTRACT §8, §11.10).
+ *
+ * create: connect home/away by FD team id, dataHora from utcDate, fase from stage,
+ *   status=agendada, apiFootballId=FD match id.
+ * update: refresh ONLY dataHora + fase. Never reverts status/placar/resultadoFonte,
+ *   so a daily re-sync cannot undo a settled or manually-overridden result.
  */
 export async function syncFixtures(
-  opts: { client?: ApiFootballClient } = {},
+  opts: { client?: FootballDataClient } = {},
 ): Promise<{ teams: number; matches: number }> {
   const client = opts.client ?? defaultClient()
 
-  const apiTeams = await client.getTeams()
-  for (const entry of apiTeams) {
+  const fdTeams = await client.getTeams()
+  for (const team of fdTeams) {
     await prisma.team.upsert({
-      where: { apiFootballId: entry.team.id },
-      update: { nome: entry.team.name, codigoPais: entry.team.code ?? '' },
+      where: { apiFootballId: team.id },
+      update: { nome: team.name, codigoPais: team.tla ?? '' },
       create: {
-        nome: entry.team.name,
-        codigoPais: entry.team.code ?? '',
-        apiFootballId: entry.team.id,
+        nome: team.name,
+        codigoPais: team.tla ?? '',
+        apiFootballId: team.id,
       },
     })
   }
 
-  // Map apiFootballId -> our Team.id for FK wiring.
+  // Map FD team id -> our Team.id for FK wiring.
   const teamRows = await prisma.team.findMany({
     where: { apiFootballId: { not: null } },
     select: { id: true, apiFootballId: true },
   })
-  const teamIdByApiId = new Map<number, string>()
+  const teamIdByFdId = new Map<number, string>()
   for (const t of teamRows) {
-    if (t.apiFootballId != null) teamIdByApiId.set(t.apiFootballId, t.id)
+    if (t.apiFootballId != null) teamIdByFdId.set(t.apiFootballId, t.id)
   }
 
-  const apiFixtures = await client.getFixtures()
+  const fdMatches = await client.getMatches()
   let matchCount = 0
-  for (const fx of apiFixtures) {
-    const homeId = teamIdByApiId.get(fx.teams.home.id)
-    const awayId = teamIdByApiId.get(fx.teams.away.id)
-    if (!homeId || !awayId) continue // skip fixtures whose teams we did not sync
+  for (const m of fdMatches) {
+    const homeId = teamIdByFdId.get(m.homeTeam.id)
+    const awayId = teamIdByFdId.get(m.awayTeam.id)
+    if (!homeId || !awayId) continue // skip matches whose teams we did not sync
 
     await prisma.match.upsert({
-      where: { apiFootballId: fx.fixture.id },
+      where: { apiFootballId: m.id },
+      // update: refresh schedule + phase only; never revert a settled/manual result.
       update: {
-        homeTeamId: homeId,
-        awayTeamId: awayId,
-        dataHora: new Date(fx.fixture.date),
-        fase: roundToPhase(fx.league.round),
+        dataHora: new Date(m.utcDate),
+        fase: stageToPhase(m.stage),
       },
       create: {
-        fase: roundToPhase(fx.league.round),
-        homeTeamId: homeId,
-        awayTeamId: awayId,
-        dataHora: new Date(fx.fixture.date),
-        apiFootballId: fx.fixture.id,
+        fase: stageToPhase(m.stage),
+        homeTeam: { connect: { id: homeId } },
+        awayTeam: { connect: { id: awayId } },
+        dataHora: new Date(m.utcDate),
+        status: 'agendada',
+        apiFootballId: m.id,
       },
     })
     matchCount++
   }
 
-  return { teams: apiTeams.length, matches: matchCount }
+  return { teams: fdTeams.length, matches: matchCount }
 }
 
 /** A match window stays "open for polling" from kickoff to kickoff + this. */
 export const MATCH_WINDOW_DURATION_MS = 3 * 60 * 60 * 1000 // 3h: 90' + ET + stoppage + settle lag
 
 /**
- * Polls finished fixtures and settles matches, but only when `now` falls inside
- * an open match window (an agendada match whose [dataHora, dataHora+window] contains now).
- * Outside every window: no-op, no API call (preserves the 100 req/day budget).
+ * Polls finished matches and settles ours, but only when `now` falls inside an
+ * open match window (an agendada match whose [dataHora, dataHora+window] contains
+ * now). Outside every window: no-op, no API call (preserves the request budget).
  *
- * Candidate gate (CONTRACT §11.8): status agendada, resultadoFonte != manual (so a
- * manual result is never overwritten — defense-in-depth even though manual matches
- * are already non-agendada), dataHora within [now - window, now], apiFootballId set.
+ * Candidate gate (CONTRACT §11.8): status agendada, resultadoFonte not manual
+ * (include NULL explicitly so freshly-synced rows are not silently dropped),
+ * dataHora within [now - window, now], apiFootballId set.
  *
- * For each candidate whose API fixture is final (matched by apiFootballId): writes
+ * For each candidate whose FD match is final (matched by apiFootballId): writes
  * placarHome/placarAway + status=encerrada + resultadoFonte=api, then recomputes
  * pontosObtidos for that match's predictions via scorePrediction. Idempotent:
  * settled matches are no longer agendada, so they fall out of the candidate gate.
  */
 export async function pollAndSettle(
-  opts: { now?: Date; client?: ApiFootballClient } = {},
+  opts: { now?: Date; client?: FootballDataClient } = {},
 ): Promise<{ settledMatchIds: string[] }> {
   const now = opts.now ?? new Date()
 
@@ -157,20 +205,20 @@ export async function pollAndSettle(
   }
 
   const client = opts.client ?? defaultClient()
-  const finished = await client.getFinishedFixtures()
-  const finishedByApiId = new Map<number, ApiFixture>()
-  for (const fx of finished) {
-    finishedByApiId.set(fx.fixture.id, fx)
+  const finished = await client.getFinishedMatches()
+  const finishedByFdId = new Map<number, FdMatch>()
+  for (const m of finished) {
+    finishedByFdId.set(m.id, m)
   }
 
   const settledMatchIds: string[] = []
 
   for (const m of openMatches) {
     if (m.apiFootballId == null) continue
-    const fx = finishedByApiId.get(m.apiFootballId)
-    if (!fx || !hasFinalScore(fx)) continue
+    const fd = finishedByFdId.get(m.apiFootballId)
+    if (!fd || !hasFinalScore(fd)) continue
 
-    const score = fixtureToScore(fx)
+    const score = fixtureToScore(fd)
 
     // Atomic per match (CONTRACT §11.8): write the result and recompute every
     // prediction's pontosObtidos in one transaction. A crash mid-recompute would

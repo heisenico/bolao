@@ -1,34 +1,44 @@
 import { describe, it, expect } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { pollAndSettle, syncFixtures } from './results'
-import type { ApiFootballClient, ApiFixture } from '@/lib/apiFootball'
+import type { FootballDataClient, FdMatch } from '@/lib/footballData'
 
-const KICKOFF = '2026-06-11T20:00:00+00:00'
+const KICKOFF = '2026-06-11T20:00:00Z'
 
-function baseClient(finished: ApiFixture[]): ApiFootballClient {
+function scheduledMatch(): FdMatch {
   return {
-    getTeams: async () => [
-      { team: { id: 6, name: 'Brazil', code: 'BRA' } },
-      { team: { id: 2, name: 'France', code: 'FRA' } },
-    ],
-    getFixtures: async () => [
-      {
-        fixture: { id: 1001, date: KICKOFF, status: { short: 'NS' } },
-        league: { round: 'Group A - 1' },
-        teams: { home: { id: 6, name: 'Brazil' }, away: { id: 2, name: 'France' } },
-        goals: { home: null, away: null },
-      },
-    ],
-    getFinishedFixtures: async () => finished,
+    id: 1001,
+    utcDate: KICKOFF,
+    stage: 'GROUP_STAGE',
+    group: 'Group A',
+    status: 'SCHEDULED',
+    homeTeam: { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
+    awayTeam: { id: 2, name: 'France', tla: 'FRA', crest: null },
+    score: { winner: null, duration: 'REGULAR', fullTime: { home: null, away: null } },
   }
 }
 
-function finishedFixture(home: number, away: number): ApiFixture {
+function baseClient(finished: FdMatch[]): FootballDataClient {
   return {
-    fixture: { id: 1001, date: KICKOFF, status: { short: 'FT' } },
-    league: { round: 'Group A - 1' },
-    teams: { home: { id: 6, name: 'Brazil' }, away: { id: 2, name: 'France' } },
-    goals: { home, away },
+    getTeams: async () => [
+      { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
+      { id: 2, name: 'France', tla: 'FRA', crest: null },
+    ],
+    getMatches: async () => [scheduledMatch()],
+    getFinishedMatches: async () => finished,
+  }
+}
+
+function finishedMatch(home: number, away: number): FdMatch {
+  return {
+    id: 1001,
+    utcDate: KICKOFF,
+    stage: 'GROUP_STAGE',
+    group: 'Group A',
+    status: 'FINISHED',
+    homeTeam: { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
+    awayTeam: { id: 2, name: 'France', tla: 'FRA', crest: null },
+    score: { winner: 'HOME_TEAM', duration: 'REGULAR', fullTime: { home, away } },
   }
 }
 
@@ -67,9 +77,9 @@ describe('pollAndSettle', () => {
   it('no-op outside any match window (does not call the API)', async () => {
     await syncFixtures({ client: baseClient([]) })
     let finishedCalls = 0
-    const spyClient: ApiFootballClient = {
+    const spyClient: FootballDataClient = {
       ...baseClient([]),
-      getFinishedFixtures: async () => {
+      getFinishedMatches: async () => {
         finishedCalls++
         return []
       },
@@ -91,7 +101,7 @@ describe('pollAndSettle', () => {
     const inWindow = new Date('2026-06-11T22:00:00.000Z') // kickoff + 2h
     const result = await pollAndSettle({
       now: inWindow,
-      client: baseClient([finishedFixture(2, 1)]),
+      client: baseClient([finishedMatch(2, 1)]),
     })
 
     expect(result.settledMatchIds).toHaveLength(1)
@@ -117,7 +127,7 @@ describe('pollAndSettle', () => {
     const inWindow = new Date('2026-06-11T22:00:00.000Z')
     const result = await pollAndSettle({
       now: inWindow,
-      client: baseClient([finishedFixture(2, 1)]),
+      client: baseClient([finishedMatch(2, 1)]),
     })
 
     // The match settles, but no prediction row is created for the absent member.
@@ -140,7 +150,7 @@ describe('pollAndSettle', () => {
     const inWindow = new Date('2026-06-11T22:00:00.000Z')
     const result = await pollAndSettle({
       now: inWindow,
-      client: baseClient([finishedFixture(2, 1)]),
+      client: baseClient([finishedMatch(2, 1)]),
     })
 
     expect(result.settledMatchIds).toEqual([])
@@ -155,8 +165,8 @@ describe('pollAndSettle', () => {
     await seedPrediction(2, 1)
 
     const inWindow = new Date('2026-06-11T22:00:00.000Z')
-    await pollAndSettle({ now: inWindow, client: baseClient([finishedFixture(2, 1)]) })
-    const second = await pollAndSettle({ now: inWindow, client: baseClient([finishedFixture(2, 1)]) })
+    await pollAndSettle({ now: inWindow, client: baseClient([finishedMatch(2, 1)]) })
+    const second = await pollAndSettle({ now: inWindow, client: baseClient([finishedMatch(2, 1)]) })
 
     expect(second.settledMatchIds).toEqual([])
   })

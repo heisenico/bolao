@@ -42,9 +42,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("sends the X-Auth-Token header and competition/season query for matches", async () => {
-    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
-      jsonResponse({ matches: [fdMatch()] }),
-    );
+    const fetchMock = vi.fn(async () => jsonResponse({ matches: [fdMatch()] }));
     const client = createFootballDataClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const matches = await client.getMatches();
@@ -60,9 +58,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("getTeams returns the teams array", async () => {
-    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
-      jsonResponse(teamsBody),
-    );
+    const fetchMock = vi.fn(async () => jsonResponse(teamsBody));
     const client = createFootballDataClient({ apiKey: "KEY123", fetchFn: fetchMock });
 
     const teams = await client.getTeams();
@@ -73,7 +69,7 @@ describe("createFootballDataClient", () => {
   });
 
   it("getFinishedMatches requests the FINISHED status filter", async () => {
-    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+    const fetchMock = vi.fn(async () =>
       jsonResponse({
         matches: [
           fdMatch({

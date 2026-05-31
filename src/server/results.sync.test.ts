@@ -1,23 +1,30 @@
 import { describe, it, expect } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { syncFixtures } from './results'
-import type { ApiFootballClient } from '@/lib/apiFootball'
+import type { FootballDataClient, FdMatch } from '@/lib/footballData'
 
-function fakeClient(overrides?: Partial<ApiFootballClient>): ApiFootballClient {
+function scheduledMatch(over?: Partial<FdMatch>): FdMatch {
+  return {
+    id: 1001,
+    utcDate: '2026-06-11T20:00:00Z',
+    stage: 'GROUP_STAGE',
+    group: 'Group A',
+    status: 'SCHEDULED',
+    homeTeam: { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
+    awayTeam: { id: 2, name: 'France', tla: 'FRA', crest: null },
+    score: { winner: null, duration: 'REGULAR', fullTime: { home: null, away: null } },
+    ...over,
+  }
+}
+
+function fakeClient(overrides?: Partial<FootballDataClient>): FootballDataClient {
   return {
     getTeams: async () => [
-      { team: { id: 6, name: 'Brazil', code: 'BRA' } },
-      { team: { id: 2, name: 'France', code: 'FRA' } },
+      { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
+      { id: 2, name: 'France', tla: 'FRA', crest: null },
     ],
-    getFixtures: async () => [
-      {
-        fixture: { id: 1001, date: '2026-06-11T20:00:00+00:00', status: { short: 'NS' } },
-        league: { round: 'Group A - 1' },
-        teams: { home: { id: 6, name: 'Brazil' }, away: { id: 2, name: 'France' } },
-        goals: { home: null, away: null },
-      },
-    ],
-    getFinishedFixtures: async () => [],
+    getMatches: async () => [scheduledMatch()],
+    getFinishedMatches: async () => [],
     ...overrides,
   }
 }
@@ -57,14 +64,7 @@ describe('syncFixtures', () => {
     await syncFixtures({ client: fakeClient() })
 
     const moved = fakeClient({
-      getFixtures: async () => [
-        {
-          fixture: { id: 1001, date: '2026-06-12T18:00:00+00:00', status: { short: 'NS' } },
-          league: { round: 'Group A - 1' },
-          teams: { home: { id: 6, name: 'Brazil' }, away: { id: 2, name: 'France' } },
-          goals: { home: null, away: null },
-        },
-      ],
+      getMatches: async () => [scheduledMatch({ utcDate: '2026-06-12T18:00:00Z' })],
     })
     await syncFixtures({ client: moved })
 
@@ -72,15 +72,30 @@ describe('syncFixtures', () => {
     expect(match!.dataHora.toISOString()).toBe('2026-06-12T18:00:00.000Z')
   })
 
-  it('sets match.fase from league.round (knockout rounds map correctly)', async () => {
+  it('never reverts status/placar/resultadoFonte on re-sync (update touches only dataHora+fase)', async () => {
+    await syncFixtures({ client: fakeClient() })
+
+    // Simulate the match already settled (by the poller).
+    const before = await prisma.match.findFirstOrThrow({ where: { apiFootballId: 1001 } })
+    await prisma.match.update({
+      where: { id: before.id },
+      data: { placarHome: 2, placarAway: 1, status: 'encerrada', resultadoFonte: 'api' },
+    })
+
+    // A later daily sync still returns the match as SCHEDULED with no score.
+    await syncFixtures({ client: fakeClient() })
+
+    const after = await prisma.match.findFirstOrThrow({ where: { apiFootballId: 1001 } })
+    expect(after.status).toBe('encerrada')
+    expect(after.placarHome).toBe(2)
+    expect(after.placarAway).toBe(1)
+    expect(after.resultadoFonte).toBe('api')
+  })
+
+  it('sets match.fase from stage (knockout stages map correctly)', async () => {
     const knockout = fakeClient({
-      getFixtures: async () => [
-        {
-          fixture: { id: 2001, date: '2026-07-05T18:00:00+00:00', status: { short: 'NS' } },
-          league: { round: 'Round of 16' },
-          teams: { home: { id: 6, name: 'Brazil' }, away: { id: 2, name: 'France' } },
-          goals: { home: null, away: null },
-        },
+      getMatches: async () => [
+        scheduledMatch({ id: 2001, utcDate: '2026-07-05T18:00:00Z', stage: 'LAST_16' }),
       ],
     })
     await syncFixtures({ client: knockout })
