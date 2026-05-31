@@ -279,3 +279,58 @@ export async function pollAndSettle(
 
   return { settledMatchIds }
 }
+
+/** Rejects a score that is not a non-negative integer (no silent coercion). */
+function assertValidScore(value: number, label: string): void {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative integer, got ${value}`)
+  }
+}
+
+/**
+ * Admin manual override (CONTRACT §4 / §6): set the final score, close the
+ * match (status=encerrada), mark resultadoFonte=manual, and recompute
+ * pontosObtidos for every prediction on this match. The poller already skips
+ * manual matches (they are no longer `agendada` and the candidate gate excludes
+ * non-api/non-null sources), so a manual result is never overwritten (§11.8).
+ *
+ * W.O. needs no special path: an official walkover is applied as a normal manual
+ * result (e.g. 3x0) through this same function (CONTRACT §4 / §11.8).
+ *
+ * The match update and every prediction recompute run in one transaction: a
+ * crash mid-recompute must not leave the match `encerrada` with only some
+ * predictions scored (re-running can't fix it — the match is no longer a poll
+ * candidate). The transaction rolls back the whole change so it can be retried.
+ */
+export async function applyManualResult(
+  matchId: string,
+  placarHome: number,
+  placarAway: number,
+): Promise<void> {
+  assertValidScore(placarHome, 'placarHome')
+  assertValidScore(placarAway, 'placarAway')
+
+  await prisma.$transaction(async (tx) => {
+    await tx.match.update({
+      where: { id: matchId },
+      data: {
+        placarHome,
+        placarAway,
+        status: 'encerrada',
+        resultadoFonte: 'manual',
+      },
+    })
+
+    const predictions = await tx.prediction.findMany({ where: { matchId } })
+    for (const p of predictions) {
+      const pontos = scorePrediction(
+        { home: p.palpiteHome, away: p.palpiteAway },
+        { home: placarHome, away: placarAway },
+      )
+      await tx.prediction.update({
+        where: { id: p.id },
+        data: { pontosObtidos: pontos },
+      })
+    }
+  })
+}
