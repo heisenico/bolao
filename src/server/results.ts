@@ -172,24 +172,32 @@ export async function pollAndSettle(
 
     const score = fixtureToScore(fx)
 
-    await prisma.match.update({
-      where: { id: m.id },
-      data: {
-        placarHome: score.home,
-        placarAway: score.away,
-        status: 'encerrada',
-        resultadoFonte: 'api',
-      },
-    })
-
-    const predictions = await prisma.prediction.findMany({ where: { matchId: m.id } })
-    for (const p of predictions) {
-      const pontos = scorePrediction({ home: p.palpiteHome, away: p.palpiteAway }, score)
-      await prisma.prediction.update({
-        where: { id: p.id },
-        data: { pontosObtidos: pontos },
+    // Atomic per match (CONTRACT §11.8): write the result and recompute every
+    // prediction's pontosObtidos in one transaction. A crash mid-recompute would
+    // otherwise flip the match to `encerrada` with only some predictions scored,
+    // and a re-run can't fix it (the match is no longer `agendada`, so it falls
+    // out of the candidate gate). The transaction rolls back the result write too,
+    // leaving the match `agendada` for the next poll to retry cleanly.
+    await prisma.$transaction(async (tx) => {
+      await tx.match.update({
+        where: { id: m.id },
+        data: {
+          placarHome: score.home,
+          placarAway: score.away,
+          status: 'encerrada',
+          resultadoFonte: 'api',
+        },
       })
-    }
+
+      const predictions = await tx.prediction.findMany({ where: { matchId: m.id } })
+      for (const p of predictions) {
+        const pontos = scorePrediction({ home: p.palpiteHome, away: p.palpiteAway }, score)
+        await tx.prediction.update({
+          where: { id: p.id },
+          data: { pontosObtidos: pontos },
+        })
+      }
+    })
 
     settledMatchIds.push(m.id)
   }
