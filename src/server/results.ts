@@ -5,6 +5,7 @@ import {
   type FdMatch,
 } from '@/lib/footballData'
 import { scorePrediction, type Score } from '@/domain/scoring'
+import { KNOCKOUT_PHASES, type BracketMatch } from '@/domain/bracket'
 import type { MatchPhase, MatchStatus } from '@prisma/client'
 
 /** Builds the default football-data.org client from env (server-only). */
@@ -354,4 +355,28 @@ export async function cancelMatch(matchId: string): Promise<void> {
       data: { pontosObtidos: 0 },
     }),
   ])
+}
+
+/**
+ * Load knockout-phase matches (r32..final) mapped to the pure BracketMatch shape
+ * (CONTRACT §8). Group-stage matches are excluded by the `fase in KNOCKOUT_PHASES`
+ * gate. Ordered by kickoff so the Bracket can lay out columns chronologically.
+ */
+export async function getKnockoutMatches(): Promise<BracketMatch[]> {
+  const matches = await prisma.match.findMany({
+    where: { fase: { in: KNOCKOUT_PHASES } },
+    orderBy: { dataHora: 'asc' },
+    include: { homeTeam: true, awayTeam: true },
+  })
+  return matches.map((m) => ({
+    id: m.id,
+    fase: m.fase,
+    dataHora: m.dataHora,
+    homeNome: m.homeTeam.nome,
+    awayNome: m.awayTeam.nome,
+    homeCodigoPais: m.homeTeam.codigoPais,
+    awayCodigoPais: m.awayTeam.codigoPais,
+    placarHome: m.placarHome,
+    placarAway: m.placarAway,
+  }))
 }
