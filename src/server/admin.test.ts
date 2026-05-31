@@ -47,7 +47,7 @@ describe('getAdminPool', () => {
 
 describe('removeMember', () => {
   it('deletes a member when the caller owns the pool', async () => {
-    const { owner, pool, playerMember } = await fixture()
+    const { owner, playerMember } = await fixture()
     await removeMember(playerMember.id, owner.id)
     const gone = await prisma.poolMembership.findUnique({ where: { id: playerMember.id } })
     expect(gone).toBeNull()
