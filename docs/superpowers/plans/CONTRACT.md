@@ -145,11 +145,40 @@ model VerificationToken {
 }
 
 // ---------- Domain ----------
-enum PoolStatus      { aberto fechado }
-enum PaymentStatus   { pendente pago confirmado }
-enum MatchPhase      { grupos r32 oitavas quartas semi terceiro final }
-enum MatchStatus     { agendada ao_vivo encerrada adiada cancelada }
-enum ResultadoFonte  { api manual }
+// NOTE: Prisma requires one enum value per line (single-line shorthand is invalid).
+enum PoolStatus {
+  aberto
+  fechado
+}
+
+enum PaymentStatus {
+  pendente
+  pago
+  confirmado
+}
+
+enum MatchPhase {
+  grupos
+  r32
+  oitavas
+  quartas
+  semi
+  terceiro
+  final
+}
+
+enum MatchStatus {
+  agendada
+  ao_vivo
+  encerrada
+  adiada
+  cancelada
+}
+
+enum ResultadoFonte {
+  api
+  manual
+}
 
 model Pool {
   id           String           @id @default(cuid())
