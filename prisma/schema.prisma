@@ -123,6 +123,7 @@ model Team {
   id           String  @id @default(cuid())
   nome         String
   codigoPais   String                  // ISO-ish code for flag
+  bandeira     String?                 // crest/flag image URL (football-data.org)
   grupo        String?                 // "A".."L"
   apiFootballId Int?   @unique
   homeMatches  Match[] @relation("HomeTeam")
