@@ -1,5 +1,8 @@
 import { PaymentStatus, type PoolMembership } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import type { RankingRow } from '@/domain/ranking'
+import { computePrize, pickWinner } from '@/domain/prize'
+import { computeStandings } from '@/server/ranking'
 
 /**
  * Member self-declares "já paguei": pendente -> pago.
@@ -48,4 +51,26 @@ export async function confirmPayment(membershipId: string, adminId: string): Pro
       })
     }
   })
+}
+
+/**
+ * Winner-takes-all prize summary (CONTRACT §4 / §6 signature). The pot counts
+ * ONLY confirmed entries: total = (# memberships with paymentStatus=confirmado)
+ * * pool.valorEntrada (integer BRL cents). winner = top ranked row.
+ * computeStandings is already tiebreaker-sorted, so it is passed straight to
+ * pickWinner — no re-sort here.
+ */
+export async function prizeSummary(
+  poolId: string,
+): Promise<{ total: number; winner: RankingRow | null }> {
+  const pool = await prisma.pool.findUniqueOrThrow({ where: { id: poolId } })
+  const confirmedEntriesCount = await prisma.poolMembership.count({
+    where: { poolId, paymentStatus: PaymentStatus.confirmado },
+  })
+  const total = computePrize(confirmedEntriesCount, pool.valorEntrada)
+
+  const standings = await computeStandings(poolId)
+  const winner = pickWinner(standings)
+
+  return { total, winner }
 }
