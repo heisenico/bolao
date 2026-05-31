@@ -429,3 +429,15 @@ src/app/api/sync-fixtures/route.ts       # token-protected daily fixtures sync (
 src/components/AutoRefresh.tsx            # client 45s router.refresh() (Plan C)
 ```
 
+### 11.10 DATA SOURCE PIVOT — football-data.org (AUTHORITATIVE; replaces the API-Football client)
+**Why:** verified live 2026-05-31 — API-Football **Free is restricted to seasons 2022–2024** (`errors.plan`), cannot serve WC2026. **football-data.org free** returns the full 104-match WC2026 schedule. `src/lib/apiFootball.ts` is **replaced**.
+- **Client:** `src/lib/footballData.ts` (delete `apiFootball.ts` + its test). Base `https://api.football-data.org/v4`; header `X-Auth-Token: <FOOTBALL_DATA_KEY>`; competition `WC`, `season=2026`; 10 req/min. Add `env.footballDataKey()`.
+- **Endpoints:** `/competitions/WC/matches?season=2026` (all), `?status=FINISHED` (settled), `/competitions/WC/teams?season=2026`.
+- **Match v4 shape:** `{ id:number, utcDate, stage, group, status, homeTeam:{id,name,tla,crest}, awayTeam:{id,name,tla,crest}, score:{ winner, duration, fullTime:{home:number|null, away:number|null} } }`. `score.fullTime` = normal+ET, **excludes penalty shootout** (matches §4).
+- **status → MatchStatus:** SCHEDULED|TIMED→agendada, IN_PLAY|PAUSED→ao_vivo, FINISHED→encerrada, POSTPONED→adiada, CANCELLED|SUSPENDED→cancelada.
+- **stage → MatchPhase:** GROUP_STAGE→grupos, LAST_32→r32, LAST_16→oitavas, QUARTER_FINALS→quartas, SEMI_FINALS→semi, THIRD_PLACE→terceiro, FINAL→final.
+- **Field reuse:** store the FD match/team **id** in existing `apiFootballId` columns (no migration). `Team.codigoPais` = team `tla` (3-letter; real-flag rendering deferred — `Flag` falls back to the code).
+- **`syncFixtures`:** create→`status=agendada`; update→refresh only `dataHora`+`fase` (never revert `status`/`placar`/`resultadoFonte`).
+- **`pollAndSettle`:** unchanged (window gate, `OR:[{resultadoFonte:null},{resultadoFonte:'api'}]`, atomic settle+recompute); fetches FINISHED via FD, matches by `apiFootballId`, score via `fullTime`.
+- Client must **surface non-2xx/`errors` loudly** (api-sports client swallowed them).
+
