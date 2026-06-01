@@ -77,7 +77,7 @@ vitest.config.ts
 vitest.setup.ts
 .env            # DATABASE_URL (pooled), DIRECT_URL — dev
 .env.test       # DATABASE_URL (pooled), DIRECT_URL — test DB (must contain "test")
-.env.local      # AUTH_SECRET, AUTH_RESEND_KEY, AUTH_URL, API_FOOTBALL_KEY, POLL_SECRET
+.env.local      # AUTH_SECRET, AUTH_RESEND_KEY, AUTH_URL, FOOTBALL_DATA_KEY, POLL_SECRET
 ```
 
 **Boundaries:** `domain/*` is framework-free and unit-tested with zero I/O. `server/*` composes `domain/*` + `prisma`. `app/*` calls `server/*`. UI never imports `prisma` directly.
@@ -391,11 +391,11 @@ export const env = {
   authResendKey: () => process.env.AUTH_RESEND_KEY ?? '',   // empty in dev → console fallback
   emailFrom:   () => process.env.AUTH_EMAIL_FROM ?? 'Bolão da Copa <onboarding@resend.dev>', // Resend test sender; set a verified-domain from in prod
   authUrl:     () => process.env.AUTH_URL ?? 'http://localhost:3000',
-  apiFootballKey: () => requireEnv('API_FOOTBALL_KEY'),
+  footballDataKey: () => requireEnv('FOOTBALL_DATA_KEY'),
   pollSecret:  () => requireEnv('POLL_SECRET'),
 }
 ```
-All call sites use **function-call** form: `env.apiFootballKey()`, `env.pollSecret()`, `env.authUrl()`. `.env.local` placeholders include `AUTH_URL`, `API_FOOTBALL_KEY`, `POLL_SECRET`.
+All call sites use **function-call** form: `env.footballDataKey()`, `env.pollSecret()`, `env.authUrl()`. `.env.local` placeholders include `AUTH_URL`, `FOOTBALL_DATA_KEY`, `POLL_SECRET`.
 
 ### 11.4 Current-pool resolution (Plan B `src/server/pools.ts`)
 - Add `getCurrentMembership(userId: string): Promise<PoolMembership | null>` = `prisma.poolMembership.findFirst({ where: { userId }, orderBy: { joinedAt: 'asc' } })`. v1 assumes a user is effectively in one pool.
