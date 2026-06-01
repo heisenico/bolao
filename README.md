@@ -2,7 +2,7 @@
 
 Aplicação web **mobile-first** para um grupo de amigos fazer **palpites nos jogos da Copa do Mundo FIFA 2026**, com pontuação automática, ranking ao vivo e controle de pagamentos via PIX.
 
-> **A ideia:** o mais simples e funcional possível. O app **nunca movimenta dinheiro** — só registra e calcula. Tudo que adiciona custo ou risco regulatório é evitado.
+Acesse aqui: https://bolao-nine-mu.vercel.app/dashboard
 
 ## Funcionalidades
 
