@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { getAdminPool, OwnershipError } from "@/server/admin";
 import { prizeSummary } from "@/server/payments";
-import { getKnockoutMatches } from "@/server/results";
+import { getMatchesForAdmin, type AdminMatch } from "@/server/results";
 import { env } from "@/lib/env";
 import { inviteUrl, whatsappShareUrl } from "@/domain/share";
 import { formatCentsBRL } from "@/lib/money";
@@ -15,6 +15,26 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+function formatSaoPaulo(d: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+// Dropdown label: date — Home vs Away — status/score, so an owner can find the
+// right match among 72+ (SPEC §9). Includes the current score once played.
+function matchOptionLabel(m: AdminMatch): string {
+  const score =
+    m.placarHome != null && m.placarAway != null
+      ? ` (${m.placarHome}×${m.placarAway})`
+      : "";
+  return `${formatSaoPaulo(m.dataHora)} — ${m.homeNome} vs ${m.awayNome} — ${m.status}${score}`;
+}
 
 export default async function AdminPage({
   params,
@@ -50,7 +70,10 @@ export default async function AdminPage({
   }
 
   const summary = await prizeSummary(poolId);
-  const matches = await getKnockoutMatches();
+  // ALL matches (group stage included) so the manual fallback works from the
+  // tournament's start, not just the knockout phases (SPEC §9). The Bracket
+  // keeps using getKnockoutMatches.
+  const matches = await getMatchesForAdmin();
 
   const join = inviteUrl(env.authUrl(), pool.inviteCode);
   const whatsapp = whatsappShareUrl(`Entra no bolão ${pool.nome}!`, join);
@@ -85,7 +108,7 @@ export default async function AdminPage({
         <h2 className="text-lg font-bold text-[#333333]">Registrar/corrigir resultado</h2>
         {matches.length === 0 ? (
           <p className="mt-2 text-sm text-[#999999]">
-            Nenhum jogo de mata-mata disponível ainda. Sincronize os jogos.
+            Nenhum jogo disponível ainda. Sincronize os jogos.
           </p>
         ) : (
           <form action={applyResultAction} className="mt-3 flex flex-wrap items-end gap-2">
@@ -95,7 +118,7 @@ export default async function AdminPage({
               <select name="matchId" className="rounded-md border border-[#CCCCCC] p-2" required>
                 {matches.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.homeNome} x {m.awayNome}
+                    {matchOptionLabel(m)}
                   </option>
                 ))}
               </select>
@@ -134,7 +157,7 @@ export default async function AdminPage({
       <section className="rounded-lg border border-[#CCCCCC] p-4">
         <h2 className="text-lg font-bold text-[#333333]">Cancelar jogo</h2>
         {matches.length === 0 ? (
-          <p className="mt-2 text-sm text-[#999999]">Nenhum jogo de mata-mata disponível ainda.</p>
+          <p className="mt-2 text-sm text-[#999999]">Nenhum jogo disponível ainda.</p>
         ) : (
           <form action={cancelMatchAction} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="poolId" value={poolId} />
@@ -143,7 +166,7 @@ export default async function AdminPage({
               <select name="matchId" className="rounded-md border border-[#CCCCCC] p-2" required>
                 {matches.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.homeNome} x {m.awayNome}
+                    {matchOptionLabel(m)}
                   </option>
                 ))}
               </select>

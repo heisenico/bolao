@@ -357,6 +357,47 @@ export async function cancelMatch(matchId: string): Promise<void> {
   ])
 }
 
+/** One match row for the admin manual-result / cancel `<select>` (SPEC §9). */
+export type AdminMatch = {
+  id: string
+  fase: MatchPhase
+  status: MatchStatus
+  dataHora: Date
+  homeNome: string
+  awayNome: string
+  homeCodigoPais: string
+  awayCodigoPais: string
+  placarHome: number | null
+  placarAway: number | null
+}
+
+/**
+ * Load ALL matches for the admin manual-result / cancel forms (SPEC §9),
+ * ordered by kickoff. Unlike getKnockoutMatches (Bracket-only), this includes
+ * group-stage matches: the manual fallback must work for every match, and the
+ * group stage is the whole start of the tournament. Returning all phases/states
+ * (including cancelada) keeps a result correctable after the fact; the option
+ * label carries date + teams + status/score so the owner can pick the right one.
+ */
+export async function getMatchesForAdmin(): Promise<AdminMatch[]> {
+  const matches = await prisma.match.findMany({
+    orderBy: { dataHora: 'asc' },
+    include: { homeTeam: true, awayTeam: true },
+  })
+  return matches.map((m) => ({
+    id: m.id,
+    fase: m.fase,
+    status: m.status,
+    dataHora: m.dataHora,
+    homeNome: m.homeTeam.nome,
+    awayNome: m.awayTeam.nome,
+    homeCodigoPais: m.homeTeam.codigoPais,
+    awayCodigoPais: m.awayTeam.codigoPais,
+    placarHome: m.placarHome,
+    placarAway: m.placarAway,
+  }))
+}
+
 /**
  * Load knockout-phase matches (r32..final) mapped to the pure BracketMatch shape
  * (CONTRACT §8). Group-stage matches are excluded by the `fase in KNOCKOUT_PHASES`
