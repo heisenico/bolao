@@ -14,7 +14,7 @@ export default async function LoginPage() {
     if (!email) {
       throw new Error("E-mail é obrigatório");
     }
-    await signIn("resend", { email, redirectTo: "/dashboard" });
+    await signIn("nodemailer", { email, redirectTo: "/dashboard" });
   }
 
   return (
