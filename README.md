@@ -53,14 +53,17 @@ DIRECT_URL="postgresql://..."                    # conexão direta (migrations)
 
 # .env.local
 AUTH_SECRET="..."            # gere com: npx auth secret
-AUTH_RESEND_KEY=""           # Resend; vazio em dev = link mágico vai pro console
-AUTH_EMAIL_FROM="..."        # remetente dos e-mails
+SMTP_USER=""                 # Gmail SMTP (e-mail completo); vazio em dev = link mágico vai pro console
+SMTP_PASS=""                 # Gmail App Password (requer 2FA habilitado na conta)
+AUTH_EMAIL_FROM="..."        # remetente dos e-mails; em prod use o mesmo endereço Gmail do SMTP_USER
 AUTH_URL="http://localhost:3000"
 FOOTBALL_DATA_KEY="..."      # football-data.org
 POLL_SECRET="..."            # token das rotas de atualização de resultados
 ```
 
 > Em desenvolvimento o e-mail não é enviado: o **link mágico aparece no console do servidor**. Cole-o no navegador para entrar.
+>
+> Em produção o e-mail é enviado via **SMTP do Gmail** (`smtp.gmail.com:465`). Habilite a verificação em duas etapas (2FA) na conta Google e gere uma **Senha de app** (App Password) para usar em `SMTP_PASS`. Use o mesmo endereço de e-mail em `SMTP_USER` e `AUTH_EMAIL_FROM`. Não é necessário ter domínio próprio.
 
 ## Resultados automáticos
 

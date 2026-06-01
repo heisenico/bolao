@@ -77,7 +77,7 @@ vitest.config.ts
 vitest.setup.ts
 .env            # DATABASE_URL (pooled), DIRECT_URL — dev
 .env.test       # DATABASE_URL (pooled), DIRECT_URL — test DB (must contain "test")
-.env.local      # AUTH_SECRET, AUTH_RESEND_KEY, AUTH_URL, FOOTBALL_DATA_KEY, POLL_SECRET
+.env.local      # AUTH_SECRET, SMTP_USER, SMTP_PASS, AUTH_EMAIL_FROM, AUTH_URL, FOOTBALL_DATA_KEY, POLL_SECRET
 ```
 
 **Boundaries:** `domain/*` is framework-free and unit-tested with zero I/O. `server/*` composes `domain/*` + `prisma`. `app/*` calls `server/*`. UI never imports `prisma` directly.
@@ -325,12 +325,12 @@ export async function prizeSummary(poolId: string): Promise<{ total: number; win
 
 ## 7. Auth setup (verified Auth.js v5 shape)
 
-- `src/auth.ts`: `NextAuth({ adapter: PrismaAdapter(prisma), providers: [Resend({ from, sendVerificationRequest })] })`.
-- `sendVerificationRequest`: in `NODE_ENV !== 'production'` (or no `AUTH_RESEND_KEY`), `console.log` the magic-link URL; otherwise POST to `https://api.resend.com/emails`.
+- `src/auth.ts`: `NextAuth({ adapter: PrismaAdapter(prisma), providers: [Nodemailer({ server: { host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass } }, from, sendVerificationRequest })] })`.
+- `sendVerificationRequest`: in `NODE_ENV !== 'production'` (or empty `SMTP_USER`), `console.log` the magic-link URL; otherwise send via Gmail SMTP with Nodemailer (`createTransport(provider.server).sendMail(...)`). Throws on send failure (no silent catch).
 - Route handler: `src/app/api/auth/[...nextauth]/route.ts` → `export const { GET, POST } = handlers`.
 - Session: `const session = await auth()` in server components / route handlers / server actions.
-- Sign in: server action `await signIn('resend', { email })`. Sign out: `await signOut()`.
-- Env: `AUTH_SECRET` (`npx auth secret`), `AUTH_RESEND_KEY`, `AUTH_URL` (prod only), `DATABASE_URL`, `DIRECT_URL`.
+- Sign in: server action `await signIn('nodemailer', { email })` (endpoint id is `nodemailer`, e.g. `POST /api/auth/signin/nodemailer`). Sign out: `await signOut()`.
+- Env: `AUTH_SECRET` (`npx auth secret`), `SMTP_USER` + `SMTP_PASS` (Gmail SMTP — requires 2FA + an App Password), `AUTH_EMAIL_FROM` (in prod, the Gmail address), `AUTH_URL` (prod only), `DATABASE_URL`, `DIRECT_URL`. No domain needed.
 - No edge middleware in v1 → database sessions (adapter default); protect pages by checking `await auth()` and redirecting to `/login`.
 
 ## 8. Test harness (Vitest 4 + Prisma 6 + Postgres)
@@ -388,8 +388,9 @@ export const env = {
   databaseUrl: () => requireEnv('DATABASE_URL'),
   directUrl:   () => requireEnv('DIRECT_URL'),
   authSecret:  () => requireEnv('AUTH_SECRET'),
-  authResendKey: () => process.env.AUTH_RESEND_KEY ?? '',   // empty in dev → console fallback
-  emailFrom:   () => process.env.AUTH_EMAIL_FROM ?? 'Bolão da Copa <onboarding@resend.dev>', // Resend test sender; set a verified-domain from in prod
+  smtpUser:    () => process.env.SMTP_USER ?? '',          // empty in dev → console fallback; Gmail address in prod
+  smtpPass:    () => process.env.SMTP_PASS ?? '',          // Gmail App Password (requires 2FA) in prod
+  emailFrom:   () => process.env.AUTH_EMAIL_FROM ?? 'Bolão da Copa <no-reply@localhost>', // set to the Gmail address in prod
   authUrl:     () => process.env.AUTH_URL ?? 'http://localhost:3000',
   footballDataKey: () => requireEnv('FOOTBALL_DATA_KEY'),
   pollSecret:  () => requireEnv('POLL_SECRET'),
