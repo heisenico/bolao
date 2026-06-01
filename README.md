@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bolão da Copa do Mundo 2026 ⚽
 
-## Getting Started
+Aplicação web **mobile-first** para um grupo de amigos fazer **palpites nos jogos da Copa do Mundo FIFA 2026**, com pontuação automática, ranking ao vivo e controle de pagamentos via PIX.
 
-First, run the development server:
+> **A ideia:** o mais simples e funcional possível. O app **nunca movimenta dinheiro** — só registra e calcula. Tudo que adiciona custo ou risco regulatório é evitado.
+
+## Funcionalidades
+
+- **Login sem senha** — link mágico por e-mail (Auth.js).
+- **Bolão privado** — criar ou entrar por **link de convite**, com valor de entrada e chave PIX.
+- **Palpites de placar** por jogo. Cada palpite:
+  - pode ser editado até **1h antes do apito**, depois trava;
+  - fica **oculto dos outros** até o jogo travar (anti-cópia).
+- **Pontuação automática:**
+  - placar exato → **3 pts**
+  - acertou só o vencedor/empate → **1 pt**
+  - errou ou não palpitou → **0 pts**
+- **Resultados reais** via [football-data.org](https://www.football-data.org) (busca automática) + **correção manual** pelo admin.
+- **Ranking ao vivo** com desempate: cravadas → acertos de vencedor → ordem de entrada.
+- **Bracket do mata-mata** (32-avos → final), com bandeiras e grupos.
+- **Painel do admin** (organizador): confirmar pagamentos, corrigir/cancelar resultados, ver o prêmio (**vencedor leva tudo**), gerenciar participantes e compartilhar o convite (WhatsApp/copiar link).
+
+## Como funciona o PIX (semi-manual)
+
+1. O organizador define o **valor de entrada** e a **chave PIX** ao criar o bolão.
+2. O participante paga por fora e marca **"já paguei"**.
+3. O organizador confere e clica **"Confirmar pagamento"**.
+4. O app calcula o **prêmio** (soma das entradas confirmadas) e mostra o ganhador.
+5. O **repasse ao ganhador é manual**, feito pelo organizador via PIX, fora do app.
+
+> O app só **registra e calcula** — não custodia nem transfere valores. Não é aconselhamento jurídico.
+
+## Tecnologias
+
+Next.js 16 (App Router) · TypeScript · Tailwind CSS · Prisma + PostgreSQL ([Neon](https://neon.tech)) · Auth.js (link mágico) · football-data.org.
+
+## Rodando localmente
+
+**Pré-requisitos:** Node 20+, um PostgreSQL (ex.: Neon) e uma chave gratuita do football-data.org.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npx prisma migrate deploy   # cria as tabelas
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variáveis de ambiente (`.env` e `.env.local`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# .env
+DATABASE_URL="postgresql://...?pgbouncer=true"   # conexão pooled (app)
+DIRECT_URL="postgresql://..."                    # conexão direta (migrations)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# .env.local
+AUTH_SECRET="..."            # gere com: npx auth secret
+AUTH_RESEND_KEY=""           # Resend; vazio em dev = link mágico vai pro console
+AUTH_EMAIL_FROM="..."        # remetente dos e-mails
+AUTH_URL="http://localhost:3000"
+FOOTBALL_DATA_KEY="..."      # football-data.org
+POLL_SECRET="..."            # token das rotas de atualização de resultados
+```
 
-## Learn More
+> Em desenvolvimento o e-mail não é enviado: o **link mágico aparece no console do servidor**. Cole-o no navegador para entrar.
 
-To learn more about Next.js, take a look at the following resources:
+## Resultados automáticos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Um agendador externo (ex.: [cron-job.org](https://cron-job.org)) chama as rotas protegidas por token:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/sync-fixtures?secret=POLL_SECRET` — **1×/dia**, sincroniza times e jogos.
+- `GET /api/poll-scores?secret=POLL_SECRET` — **a cada ~10–15 min**, busca resultados e recalcula os pontos (só age durante janelas de jogo).
 
-## Deploy on Vercel
+## Testes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run test:run    # suíte completa (integração usa um schema de teste no Postgres)
+npm run test:unit   # só lógica pura, sem banco
+```
