@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-02T18:11:17Z",
+  "title": "Design System: Bolão da Copa 2026",
+  "extensions": {
+    "colorMeta": {
+      "pitch-green": {
+        "role": "primary",
+        "displayName": "Pitch Green",
+        "canonical": "oklch(0.62 0.16 152)",
+        "tonalRamp": [
+          "oklch(0.20 0.07 152)",
+          "oklch(0.30 0.10 152)",
+          "oklch(0.40 0.13 152)",
+          "oklch(0.50 0.15 152)",
+          "oklch(0.62 0.16 152)",
+          "oklch(0.72 0.14 152)",
+          "oklch(0.83 0.10 152)",
+          "oklch(0.93 0.05 152)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#111111",
+        "tonalRamp": [
+          "#111111",
+          "#222222",
+          "#333333",
+          "#555555",
+          "#666666",
+          "#999999",
+          "#CCCCCC",
+          "#F3F3F3"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline Border",
+        "canonical": "#CCCCCC",
+        "tonalRamp": [
+          "#666666",
+          "#888888",
+          "#999999",
+          "#BBBBBB",
+          "#CCCCCC",
+          "#E0E0E0",
+          "#ECECEC",
+          "#F3F3F3"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#FFFFFF", "#FAFAFA", "#F3F3F3", "#ECECEC", "#E0E0E0", "#CCCCCC", "#999999", "#666666"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "oklch(0.55 0.22 28)",
+        "tonalRamp": [
+          "oklch(0.25 0.10 28)",
+          "oklch(0.35 0.15 28)",
+          "oklch(0.45 0.19 28)",
+          "oklch(0.55 0.22 28)",
+          "oklch(0.65 0.20 28)",
+          "oklch(0.75 0.15 28)",
+          "oklch(0.85 0.09 28)",
+          "oklch(0.93 0.04 28)"
+        ]
+      },
+      "whatsapp": {
+        "role": "tertiary",
+        "displayName": "WhatsApp Green",
+        "canonical": "oklch(0.78 0.18 152)",
+        "tonalRamp": [
+          "oklch(0.30 0.10 152)",
+          "oklch(0.42 0.14 152)",
+          "oklch(0.55 0.17 152)",
+          "oklch(0.66 0.18 152)",
+          "oklch(0.78 0.18 152)",
+          "oklch(0.85 0.14 152)",
+          "oklch(0.91 0.08 152)",
+          "oklch(0.96 0.04 152)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles at the top of each screen (text-2xl, 700). The app never shouts; no clamp." },
+      "title": { "displayName": "Title", "purpose": "In-row and in-card emphasis — match team names, leader row (1rem, 600)." },
+      "body": { "displayName": "Body", "purpose": "Default reading text (1rem, 400)." },
+      "label": { "displayName": "Label", "purpose": "Form labels, button text, status lines, captions (0.875rem, 500; buttons render 600)." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 4px 16px rgba(0,0,0,0.12)", "purpose": "The only sanctioned shadow — elements that float over the page (dialog, popover, sticky bar). Never on resting cards." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for color/state transitions." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Button/input state transitions (transition-colors)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single committed action — Entrar, Confirmar palpite, Confirmar pagamento.",
+      "html": "<button class=\"ds-btn-primary\">Confirmar palpite</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; background: #06AA48; color: #FFFFFF; font-family: 'Open Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; transition: filter 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { filter: brightness(0.95); } .ds-btn-primary:focus-visible { outline: 2px solid #06AA48; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Low-emphasis action — Sair, Cancelar.",
+      "html": "<button class=\"ds-btn-secondary\">Sair</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; background: #F3F3F3; color: #111111; font-family: 'Open Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; padding: 8px 16px; border: 1px solid #CCCCCC; border-radius: 6px; cursor: pointer; transition: background-color 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: #ECECEC; } .ds-btn-secondary:focus-visible { outline: 2px solid #06AA48; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Email and score fields. 16px text avoids iOS zoom-on-focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">E-mail</span><input class=\"ds-input\" type=\"email\" placeholder=\"voce@exemplo.com\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-field-label { font-family: 'Open Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: #111111; } .ds-input { font-family: 'Open Sans', system-ui, sans-serif; font-size: 1rem; color: #111111; background: #FFFFFF; padding: 8px 12px; border: 1px solid #CCCCCC; border-radius: 6px; outline: none; } .ds-input::placeholder { color: #666666; } .ds-input:focus { border-color: #06AA48; box-shadow: 0 0 0 2px rgba(6,170,72,0.25); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat bordered container. Depth comes from the hairline border, never a shadow.",
+      "html": "<div class=\"ds-card\">Conteúdo do card</div>",
+      "css": ".ds-card { background: #FFFFFF; color: #111111; border: 1px solid #CCCCCC; border-radius: 6px; padding: 16px; }"
+    },
+    {
+      "name": "Match Row",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature component: a single upcoming match with flags, teams, kickoff/deadline times, and prediction/lock status.",
+      "html": "<li class=\"ds-match-row\"><div class=\"ds-match-teams\"><span class=\"ds-team\"><span class=\"ds-flag\" role=\"img\" aria-label=\"Brasil\">🇧🇷</span>Brasil</span><span class=\"ds-vs\">x</span><span class=\"ds-team\">Argentina<span class=\"ds-flag\" role=\"img\" aria-label=\"Argentina\">🇦🇷</span></span></div><div class=\"ds-match-meta\"><span>Jogo: 12/06 17:00</span><span>Prazo: 12/06 16:00</span></div><div class=\"ds-match-status\"><span class=\"ds-status-done\">palpite feito</span><span class=\"ds-status-muted\">aberto</span></div></li>",
+      "css": ".ds-match-row { list-style: none; display: flex; flex-direction: column; gap: 4px; background: #FFFFFF; border: 1px solid #CCCCCC; border-radius: 6px; padding: 16px; font-family: 'Open Sans', system-ui, sans-serif; } .ds-match-teams { display: flex; align-items: center; justify-content: space-between; font-size: 1rem; font-weight: 600; color: #111111; } .ds-team { display: flex; align-items: center; gap: 8px; } .ds-flag { width: 24px; height: 16px; object-fit: cover; } .ds-vs { color: #666666; font-weight: 400; } .ds-match-meta { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; color: #444444; } .ds-match-status { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; } .ds-status-done { color: #06AA48; } .ds-status-muted { color: #666666; }"
+    },
+    {
+      "name": "Ranking Leader Row",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "First place in the ranking table — the one place position earns color (Pitch Green at 10%) plus bold weight and the position number.",
+      "html": "<table class=\"ds-ranking\"><tbody><tr class=\"ds-rank-row ds-rank-leader\"><td class=\"ds-rank-pos\">1</td><td class=\"ds-rank-name\"><span class=\"ds-avatar\" aria-hidden=\"true\">N</span>Nicholas</td><td class=\"ds-rank-num\">27</td><td class=\"ds-rank-num\">5</td></tr><tr class=\"ds-rank-row\"><td class=\"ds-rank-pos\">2</td><td class=\"ds-rank-name\"><span class=\"ds-avatar\" aria-hidden=\"true\">A</span>Ana</td><td class=\"ds-rank-num\">24</td><td class=\"ds-rank-num\">4</td></tr></tbody></table>",
+      "css": ".ds-ranking { width: 100%; border-collapse: collapse; text-align: left; font-family: 'Open Sans', system-ui, sans-serif; } .ds-rank-row { border-bottom: 1px solid #F3F3F3; } .ds-rank-leader { background: rgba(6,170,72,0.10); font-weight: 700; } .ds-rank-pos { padding: 8px; } .ds-rank-name { padding: 8px; } .ds-rank-name span.ds-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: #CCCCCC; color: #222222; font-size: 0.75rem; font-weight: 700; margin-right: 8px; vertical-align: middle; } .ds-rank-num { padding: 8px; text-align: right; }"
+    },
+    {
+      "name": "Avatar Fallback",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Initial-in-a-circle used when a participant has no image. The adjacent name is the accessible label.",
+      "html": "<span class=\"ds-avatar-fallback\" aria-hidden=\"true\">N</span>",
+      "css": ".ds-avatar-fallback { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: #CCCCCC; color: #222222; font-family: 'Open Sans', system-ui, sans-serif; font-size: 0.75rem; font-weight: 700; }"
+    },
+    {
+      "name": "WhatsApp Share Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single use of WhatsApp Green. Shares the pool invite. A neutral 'copy link' button sits beside it.",
+      "html": "<button class=\"ds-btn-whatsapp\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M19.05 4.91A9.82 9.82 0 0 0 12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.91-7.02zM12.04 20.13a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 5.83 2.42 8.2 8.2 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.25 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48a.92.92 0 0 0-.66.31c-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.28z\"/></svg>Compartilhar no WhatsApp</button>",
+      "css": ".ds-btn-whatsapp { display: inline-flex; align-items: center; gap: 8px; background: #25D366; color: #FFFFFF; font-family: 'Open Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; transition: filter 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-whatsapp:hover { filter: brightness(0.95); } .ds-btn-whatsapp:focus-visible { outline: 2px solid #06AA48; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Matchday Scoreboard",
+    "overview": "This is the visual system of a clean digital scoreboard, not a sports portal and not a betting app. Scores, names, deadlines, and ranking position are the content; everything else gets out of the way. The reader is a friend on a phone, often outdoors around a match, who wants to enter a prediction in seconds and trust that the numbers are fair. Every screen is a single column of legible information with one obvious primary action. The palette is white-paper backgrounds, near-black ink, hairline gray borders, and exactly one committed accent: Pitch Green. Depth is carried by borders and tonal grays, never by drop shadows. Type is a single workhorse sans (Open Sans) doing all the jobs through weight and scale. The result reads as plain and dependable: the design equivalent of a referee's clipboard, not a casino floor. This system explicitly rejects two things: it is not a gambling or betting site, and it is not a corporate SaaS dashboard.",
+    "keyCharacteristics": [
+      "One column, mobile-first, one primary action per screen.",
+      "A single committed accent (Pitch Green) on a white-and-gray field.",
+      "Flat by default: borders and tonal layering, not shadows.",
+      "One type family (Open Sans); hierarchy from weight and scale.",
+      "Numbers, deadlines, and money states read instantly and unambiguously.",
+      "Portuguese (pt-BR); dates in America/São_Paulo, currency in BRL."
+    ],
+    "rules": [
+      { "name": "The One Green Rule", "body": "Pitch Green is the only saturated accent in the product. If a second saturated hue appears next to it that isn't a signal color (danger, WhatsApp), one of them is wrong. Emphasis that isn't an action comes from weight and scale, not from a new color.", "section": "colors" },
+      { "name": "The Single Danger Rule", "body": "There is exactly one danger red: #CC0000. The legacy #B00020 that appears in a few places is a drift, not a second token — consolidate on #CC0000. Never carry two reds.", "section": "colors" },
+      { "name": "The #888 Floor Rule", "body": "Muted body text stops at #666666 on white (~5.7:1). #888888 (~3.5:1) and lighter fail WCAG AA for body text — never use them for text a user must read, only for non-essential decoration.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "Open Sans does everything. Do not introduce a display serif, a second sans, or a mono. Three fonts read as indecision; this product earns its calm from one well-set family.", "section": "typography" },
+      { "name": "The No All-Caps Body Rule", "body": "Uppercase is reserved for nothing here by default — labels are sentence case in Portuguese. No tracked all-caps eyebrows above sections.", "section": "typography" },
+      { "name": "The Flat-Scoreboard Rule", "body": "Surfaces are flat at rest. A card, a match row, and a ranking row all sit on the page with a border, never a shadow. Shadow appears only when an element leaves the page plane (modal, popover).", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep one committed accent: Pitch Green (#06AA48) for actions, links, 'done', and the leader highlight. Everything else is white, ink, and #CCCCCC borders.",
+      "Do convey depth with borders and tonal grays. Cards and rows are flat at rest.",
+      "Do keep muted text at #666666 or darker on white. Bump any #888888 text toward ink to hit WCAG AA (≥4.5:1).",
+      "Do pair every status with a non-color cue (text + icon, not green/red alone) so done/pending, won/lost, and locked/open read for color-blind users.",
+      "Do keep one column, one primary action, and large tap targets — this is used on phones around match time.",
+      "Do set inputs at 16px to avoid iOS zoom, and give inputs and buttons a visible Pitch-Green focus ring.",
+      "Do write copy in Brazilian Portuguese; show dates in America/São_Paulo and money in BRL."
+    ],
+    "donts": [
+      "Don't make it look like a gambling or betting site — no odds, neon, flashing CTAs, dark-pattern urgency, or chrome that implies wagering or that the app moves money.",
+      "Don't make it look like a corporate SaaS dashboard — no KPI tiles, chart soup, enterprise gray, or grids of lifted shadow cards.",
+      "Don't add resting drop shadows. Shadow is reserved for true overlays (modal, popover, sticky bar).",
+      "Don't introduce a second font family or a tracked all-caps eyebrow above sections.",
+      "Don't carry two danger reds — consolidate #B00020 onto #CC0000.",
+      "Don't use #888888 or lighter for any text the user must read.",
+      "Don't use border-left/border-right greater than 1px as a colored accent stripe on cards or rows.",
+      "Don't let Pitch Green spread past actions and the leader highlight; if it covers large surfaces it stops meaning 'action'."
+    ]
+  }
+}
