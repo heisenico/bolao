@@ -1,5 +1,5 @@
 import { requireSession } from "@/lib/session";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import { createPoolAction } from "./actions";
 
@@ -18,6 +18,7 @@ export default async function NewPoolPage() {
             name="nome"
             type="text"
             required
+            maxLength={60}
             placeholder="Bolão dos Amigos"
             className="rounded-md border border-border px-3 py-2"
           />
@@ -30,9 +31,14 @@ export default async function NewPoolPage() {
             type="text"
             inputMode="decimal"
             required
+            pattern="\d+([.,]\d{1,2})?"
+            aria-describedby="valor-hint"
             placeholder="25,00"
             className="rounded-md border border-border px-3 py-2"
           />
+          <small id="valor-hint" className="text-xs text-ink-muted">
+            Use vírgula para os centavos, ex.: 25,00.
+          </small>
         </label>
 
         <label className="flex flex-col gap-1">
@@ -41,12 +47,13 @@ export default async function NewPoolPage() {
             name="chavePix"
             type="text"
             required
+            maxLength={140}
             placeholder="email@pix ou telefone ou aleatória"
             className="rounded-md border border-border px-3 py-2"
           />
         </label>
 
-        <Button type="submit">Criar bolão</Button>
+        <SubmitButton pendingLabel="Criando...">Criar bolão</SubmitButton>
       </form>
     </main>
   );

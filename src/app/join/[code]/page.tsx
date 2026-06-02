@@ -2,7 +2,7 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { EntryClosedError, joinPool, getMembership } from "@/server/pools";
 import { formatCentsBRL } from "@/lib/money";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import { markPaidAction } from "./actions";
 
@@ -35,7 +35,7 @@ export default async function JoinPoolPage({
       return (
         <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
           <AppNav />
-          <h1 className="text-2xl font-bold">{pool.nome}</h1>
+          <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
           <p
             role="alert"
             className="rounded-md bg-surface-muted p-3 text-sm text-danger"
@@ -52,7 +52,7 @@ export default async function JoinPoolPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
       <AppNav />
-      <h1 className="text-2xl font-bold">{pool.nome}</h1>
+      <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
 
       <section className="flex flex-col gap-2 rounded-md border border-border bg-surface-soft p-4">
         <h2 className="text-lg font-semibold">Pagamento via PIX</h2>
@@ -81,7 +81,7 @@ export default async function JoinPoolPage({
           <form action={markPaidAction}>
             <input type="hidden" name="membershipId" value={membership.id} />
             <input type="hidden" name="code" value={code} />
-            <Button type="submit">Já paguei</Button>
+            <SubmitButton pendingLabel="Registrando...">Já paguei</SubmitButton>
           </form>
         ) : (
           <p className="text-sm text-accent-strong">

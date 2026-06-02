@@ -4,7 +4,7 @@ import { isMatchLocked } from "@/domain/deadline";
 import { getCurrentMembership } from "@/server/pools";
 import { getVisiblePredictions } from "@/server/predictions";
 import { Flag } from "@/components/Flag";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import { savePalpiteAction } from "./actions";
 
@@ -111,7 +111,10 @@ export default async function PalpitesPage({
       ) : null}
 
       {matches.length === 0 ? (
-        <p>Nenhum jogo nesta fase ainda.</p>
+        <p>
+          Nenhum jogo nesta fase ainda. Os jogos aparecem assim que o
+          organizador sincroniza a tabela.
+        </p>
       ) : (
         matches.map((m) => {
           const locked = isMatchLocked(m.dataHora, now);
@@ -138,6 +141,9 @@ export default async function PalpitesPage({
                   name="palpiteHome"
                   type="number"
                   min={0}
+                  max={99}
+                  step={1}
+                  inputMode="numeric"
                   defaultValue={pred?.palpiteHome ?? ""}
                   disabled={locked}
                   aria-label={`Placar de ${m.homeTeam.nome}`}
@@ -148,6 +154,9 @@ export default async function PalpitesPage({
                   name="palpiteAway"
                   type="number"
                   min={0}
+                  max={99}
+                  step={1}
+                  inputMode="numeric"
                   defaultValue={pred?.palpiteAway ?? ""}
                   disabled={locked}
                   aria-label={`Placar de ${m.awayTeam.nome}`}
@@ -178,7 +187,7 @@ export default async function PalpitesPage({
                 {locked ? (
                   <span className="text-ink-muted">travado</span>
                 ) : (
-                  <Button type="submit">Salvar</Button>
+                  <SubmitButton pendingLabel="Salvando...">Salvar</SubmitButton>
                 )}
               </div>
 
@@ -196,13 +205,13 @@ export default async function PalpitesPage({
                       {revealed.map((r) => (
                         <li
                           key={r.membershipId}
-                          className="flex items-center justify-between"
+                          className="flex items-center justify-between gap-2"
                         >
-                          <span className="text-ink-soft">
+                          <span className="min-w-0 break-words text-ink-soft">
                             {r.nome}
                             {r.membershipId === membership.id ? " (você)" : ""}
                           </span>
-                          <span className="font-semibold">
+                          <span className="shrink-0 font-semibold">
                             {r.palpiteHome} x {r.palpiteAway}
                           </span>
                         </li>

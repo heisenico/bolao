@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -34,11 +34,12 @@ export default async function LoginPage() {
           name="email"
           type="email"
           required
+          maxLength={254}
           autoComplete="email"
           placeholder="voce@exemplo.com"
           className="rounded-md border border-border bg-surface px-3 py-2 text-base focus:border-accent"
         />
-        <Button type="submit">Entrar com link mágico</Button>
+        <SubmitButton pendingLabel="Enviando...">Entrar com link mágico</SubmitButton>
       </form>
     </main>
   );

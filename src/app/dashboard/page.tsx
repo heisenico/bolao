@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { LOCK_LEAD_MS, isMatchLocked } from "@/domain/deadline";
 import { getCurrentMembership } from "@/server/pools";
 import { Flag } from "@/components/Flag";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
@@ -34,16 +34,16 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-ink-soft">
           Você está logado como{" "}
-          <span className="font-medium">{session.user?.email}</span>.
+          <span className="font-medium break-words">{session.user?.email}</span>.
         </p>
         <p>Você ainda não entrou em um bolão.</p>
         <a href="/pools/new" className="text-accent-strong underline">
           Criar um bolão
         </a>
         <form action={logout}>
-          <Button type="submit" variant="secondary">
+          <SubmitButton variant="secondary" pendingLabel="Saindo...">
             Sair
-          </Button>
+          </SubmitButton>
         </form>
       </main>
     );
@@ -73,7 +73,10 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-bold">Próximos jogos</h1>
 
       {nextMatches.length === 0 ? (
-        <p>Nenhum jogo agendado.</p>
+        <p>
+          Nenhum jogo agendado ainda. Eles aparecem assim que o organizador
+          sincroniza a tabela.
+        </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {nextMatches.map((m) => {
@@ -126,9 +129,9 @@ export default async function DashboardPage() {
         Fazer/editar palpites
       </a>
       <form action={logout}>
-        <Button type="submit" variant="secondary">
+        <SubmitButton variant="secondary" pendingLabel="Saindo...">
           Sair
-        </Button>
+        </SubmitButton>
       </form>
     </main>
   );

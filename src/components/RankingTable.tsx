@@ -33,7 +33,11 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
  */
 export function RankingTable({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) {
-    return <p className="text-ink-muted">Sem participantes ainda.</p>;
+    return (
+      <p className="text-ink-muted">
+        Sem participantes ainda. Compartilhe o convite para o pessoal entrar.
+      </p>
+    );
   }
 
   return (
@@ -62,9 +66,9 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                 {i + 1}
               </td>
               <td className="px-2 py-2">
-                <span className="flex items-center gap-2">
+                <span className="flex min-w-0 items-center gap-2">
                   <Avatar nome={row.nome} image={row.image} />
-                  {row.nome}
+                  <span className="min-w-0 break-words">{row.nome}</span>
                 </span>
               </td>
               <td className="px-2 py-2 text-right" data-cell="pontos">

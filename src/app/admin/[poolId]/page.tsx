@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 import { inviteUrl, whatsappShareUrl } from "@/domain/share";
 import { formatCentsBRL } from "@/lib/money";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
-import { Button } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import {
   applyResultAction,
@@ -111,13 +111,13 @@ export default async function AdminPage({
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-6">
       <AppNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Admin — {pool.nome}</h1>
+        <h1 className="text-2xl font-bold break-words">Admin — {pool.nome}</h1>
         {/* Owner-only fixtures sync (CONTRACT §11.6) */}
         <form action={syncFixturesAction}>
           <input type="hidden" name="poolId" value={poolId} />
-          <Button variant="secondary" type="submit">
+          <SubmitButton variant="secondary" pendingLabel="Sincronizando...">
             Sincronizar jogos
-          </Button>
+          </SubmitButton>
         </form>
       </div>
 
@@ -125,7 +125,7 @@ export default async function AdminPage({
       <section className="rounded-lg border border-border bg-surface-soft p-4">
         <h2 className="text-lg font-bold">Prêmio</h2>
         <p className="mt-1 text-2xl font-bold text-accent">{formatCentsBRL(summary.total)}</p>
-        <p className="text-sm text-ink-muted">
+        <p className="text-sm text-ink-muted break-words">
           Ganhador atual: {summary.winner ? summary.winner.nome : "—"}
         </p>
       </section>
@@ -152,6 +152,9 @@ export default async function AdminPage({
                 type="number"
                 name="placarHome"
                 min={0}
+                max={99}
+                step={1}
+                inputMode="numeric"
                 required
                 className="w-16 rounded-md border border-border p-2"
               />
@@ -162,11 +165,14 @@ export default async function AdminPage({
                 type="number"
                 name="placarAway"
                 min={0}
+                max={99}
+                step={1}
+                inputMode="numeric"
                 required
                 className="w-16 rounded-md border border-border p-2"
               />
             </label>
-            <Button type="submit">Salvar resultado</Button>
+            <SubmitButton pendingLabel="Salvando...">Salvar resultado</SubmitButton>
           </form>
         )}
         <p className="mt-2 text-xs text-ink-muted">
@@ -188,9 +194,9 @@ export default async function AdminPage({
                 {matchOptions}
               </select>
             </label>
-            <Button variant="danger" type="submit">
+            <SubmitButton variant="danger" pendingLabel="Cancelando...">
               Cancelar jogo
-            </Button>
+            </SubmitButton>
           </form>
         )}
       </section>
@@ -200,8 +206,8 @@ export default async function AdminPage({
         <h2 className="text-lg font-bold">Participantes</h2>
         <ul className="mt-3 divide-y divide-surface-muted">
           {pool.memberships.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-              <span className="text-sm">
+            <li key={m.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2">
+              <span className="min-w-0 break-words text-sm">
                 {m.user.name ?? m.user.email}
                 <span className="ml-2 text-xs text-ink-muted">[{PAYMENT_STATUS_LABEL[m.paymentStatus]}]</span>
               </span>
@@ -210,16 +216,16 @@ export default async function AdminPage({
                   <form action={confirmPaymentAction}>
                     <input type="hidden" name="poolId" value={poolId} />
                     <input type="hidden" name="membershipId" value={m.id} />
-                    <Button type="submit">Confirmar pagamento</Button>
+                    <SubmitButton pendingLabel="Confirmando...">Confirmar pagamento</SubmitButton>
                   </form>
                 )}
                 {m.userId !== pool.ownerId && (
                   <form action={removeMemberAction}>
                     <input type="hidden" name="poolId" value={poolId} />
                     <input type="hidden" name="membershipId" value={m.id} />
-                    <Button variant="danger" type="submit">
+                    <SubmitButton variant="danger" pendingLabel="Removendo...">
                       Remover
-                    </Button>
+                    </SubmitButton>
                   </form>
                 )}
               </span>
