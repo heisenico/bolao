@@ -59,6 +59,37 @@ export async function upsertPrediction(args: {
 }
 
 /**
+ * Has this membership predicted every match in the given match's phase? Backs the
+ * "fase completa" confirmation shown when a save fills the last open pick. True
+ * only when the member has a prediction for every match in the phase; a
+ * locked-but-unpredicted match keeps it false (they did not complete it in time).
+ * Returns false for an unknown match.
+ */
+export async function hasPredictedEntirePhase(
+  membershipId: string,
+  matchId: string,
+): Promise<boolean> {
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    select: { fase: true },
+  })
+  if (!match) return false
+
+  const phaseMatchIds = (
+    await prisma.match.findMany({
+      where: { fase: match.fase },
+      select: { id: true },
+    })
+  ).map((m) => m.id)
+  if (phaseMatchIds.length === 0) return false
+
+  const predicted = await prisma.prediction.count({
+    where: { membershipId, matchId: { in: phaseMatchIds } },
+  })
+  return predicted >= phaseMatchIds.length
+}
+
+/**
  * Predictions for a match the viewer is allowed to see.
  * While the match is open, only the viewer's own prediction is returned (anti-copy).
  * Once locked (now >= kickoff - 1h), all members' predictions are returned.

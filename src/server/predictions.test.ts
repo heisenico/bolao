@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { MatchPhase } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { createPool, joinPool } from './pools'
 import {
   PredictionLockedError,
   getVisiblePredictions,
+  hasPredictedEntirePhase,
   upsertPrediction,
 } from './predictions'
 
@@ -182,5 +184,85 @@ describe('predictions service (integration)', () => {
   it('getVisiblePredictions throws for an unknown match id', async () => {
     const now = new Date('2026-06-11T15:00:00.000Z')
     await expect(getVisiblePredictions('nope', memberAId, now)).rejects.toThrow(/match/i)
+  })
+})
+
+describe('hasPredictedEntirePhase (integration)', () => {
+  let memberAId: string
+  let memberBId: string
+
+  async function seedPhaseMatch(fase: MatchPhase, suffix: string) {
+    const home = await prisma.team.create({ data: { nome: `H-${suffix}`, codigoPais: 'BR' } })
+    const away = await prisma.team.create({ data: { nome: `A-${suffix}`, codigoPais: 'AR' } })
+    return prisma.match.create({
+      data: {
+        fase,
+        homeTeamId: home.id,
+        awayTeamId: away.id,
+        dataHora: new Date('2026-06-20T20:00:00.000Z'),
+      },
+    })
+  }
+
+  async function predict(membershipId: string, matchId: string) {
+    await prisma.prediction.create({
+      data: { membershipId, matchId, palpiteHome: 1, palpiteAway: 0 },
+    })
+  }
+
+  beforeEach(async () => {
+    const owner = await prisma.user.create({ data: { email: `ph-o-${Date.now()}-${Math.random()}@test.dev` } })
+    const pool = await createPool({
+      ownerId: owner.id,
+      nome: 'Phase Pool',
+      valorEntrada: 1000,
+      chavePix: 'ph@pix',
+    })
+    const uA = await prisma.user.create({ data: { email: `ph-a-${Date.now()}-${Math.random()}@test.dev` } })
+    const uB = await prisma.user.create({ data: { email: `ph-b-${Date.now()}-${Math.random()}@test.dev` } })
+    memberAId = (await joinPool({ inviteCode: pool.inviteCode, userId: uA.id })).id
+    memberBId = (await joinPool({ inviteCode: pool.inviteCode, userId: uB.id })).id
+  })
+
+  it('is false while any match in the phase is still unpredicted', async () => {
+    const m1 = await seedPhaseMatch('grupos', 'g1')
+    await seedPhaseMatch('grupos', 'g2')
+    await predict(memberAId, m1.id)
+
+    expect(await hasPredictedEntirePhase(memberAId, m1.id)).toBe(false)
+  })
+
+  it('is true once every match in the phase is predicted', async () => {
+    const m1 = await seedPhaseMatch('grupos', 'g1')
+    const m2 = await seedPhaseMatch('grupos', 'g2')
+    await predict(memberAId, m1.id)
+    await predict(memberAId, m2.id)
+
+    expect(await hasPredictedEntirePhase(memberAId, m1.id)).toBe(true)
+  })
+
+  it('scopes completion to the match own phase, ignoring other phases', async () => {
+    const g1 = await seedPhaseMatch('grupos', 'g1')
+    const g2 = await seedPhaseMatch('grupos', 'g2')
+    const o1 = await seedPhaseMatch('oitavas', 'o1')
+    await predict(memberAId, g1.id)
+    await predict(memberAId, g2.id)
+
+    // Group phase fully predicted -> true, even though oitavas is untouched.
+    expect(await hasPredictedEntirePhase(memberAId, g1.id)).toBe(true)
+    // The oitavas match's own phase still has an open pick -> false.
+    expect(await hasPredictedEntirePhase(memberAId, o1.id)).toBe(false)
+  })
+
+  it('counts only the given membership predictions', async () => {
+    const m1 = await seedPhaseMatch('grupos', 'g1')
+    await predict(memberBId, m1.id)
+
+    expect(await hasPredictedEntirePhase(memberAId, m1.id)).toBe(false)
+    expect(await hasPredictedEntirePhase(memberBId, m1.id)).toBe(true)
+  })
+
+  it('is false for an unknown match id', async () => {
+    expect(await hasPredictedEntirePhase(memberAId, 'nope')).toBe(false)
   })
 })

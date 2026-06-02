@@ -43,6 +43,73 @@ textarea::placeholder {
   opacity: 1;
 }
 
+/* "Palpite salvo" confirmation. Resting state is the final, visible state, so
+   first paint and prefers-reduced-motion show everything drawn and settled with
+   no entrance; the entrances are declared only under no-preference. Each replays
+   per save because the elements are remounted with a fresh key. */
+.check-draw__path {
+  stroke-dasharray: 24; /* >= the checkmark path length */
+  stroke-dashoffset: 0; /* drawn at rest */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .check-draw--in .check-draw__path {
+    animation: check-draw-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .feito--in {
+    animation: feito-settle 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .phase-note {
+    animation: phase-note-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .phase-note__ring {
+    animation: phase-note-ring 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes check-draw-in {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes feito-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes phase-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* One contained ring pulse behind the "fase completa" check (the warm touch). */
+@keyframes phase-note-ring {
+  from {
+    opacity: 0.45;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

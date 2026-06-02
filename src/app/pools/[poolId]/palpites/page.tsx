@@ -5,9 +5,8 @@ import { isMatchLocked } from "@/domain/deadline";
 import { getMembership } from "@/server/pools";
 import { getVisiblePredictions } from "@/server/predictions";
 import { Flag } from "@/components/Flag";
-import { SubmitButton } from "@/components/SubmitButton";
+import { PalpiteRow } from "@/components/PalpiteRow";
 import { AppNav } from "@/components/AppNav";
-import { savePalpiteAction } from "@/app/palpites/actions";
 
 export default async function PalpitesPage({
   params,
@@ -108,15 +107,39 @@ export default async function PalpitesPage({
         matches.map((m) => {
           const locked = isMatchLocked(m.dataHora, now);
           const pred = byMatch.get(m.id);
+
+          if (!locked) {
+            return (
+              <PalpiteRow
+                key={m.id}
+                poolId={poolId}
+                matchId={m.id}
+                grupo={m.homeTeam.grupo}
+                home={{
+                  nome: m.homeTeam.nome,
+                  codigoPais: m.homeTeam.codigoPais,
+                  bandeira: m.homeTeam.bandeira,
+                }}
+                away={{
+                  nome: m.awayTeam.nome,
+                  codigoPais: m.awayTeam.codigoPais,
+                  bandeira: m.awayTeam.bandeira,
+                }}
+                hasPrediction={!!pred}
+                defaultHome={pred?.palpiteHome ?? null}
+                defaultAway={pred?.palpiteAway ?? null}
+              />
+            );
+          }
+
+          // Locked match: display-only (no submit), with the reveal of every
+          // member's prediction (contract §6 reveal-after-lock).
           const revealed = revealedByMatch.get(m.id) ?? [];
           return (
-            <form
+            <div
               key={m.id}
-              action={savePalpiteAction}
               className="flex flex-col gap-2 rounded-md border border-border p-4"
             >
-              <input type="hidden" name="poolId" value={poolId} />
-              <input type="hidden" name="matchId" value={m.id} />
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2 font-semibold">
                   <Flag
@@ -127,27 +150,19 @@ export default async function PalpitesPage({
                   <span className="truncate">{m.homeTeam.nome}</span>
                 </span>
                 <input
-                  name="palpiteHome"
                   type="number"
-                  min={0}
-                  max={99}
-                  step={1}
                   inputMode="numeric"
                   defaultValue={pred?.palpiteHome ?? ""}
-                  disabled={locked}
+                  disabled
                   aria-label={`Placar de ${m.homeTeam.nome}`}
                   className="w-14 rounded-md border border-border px-2 py-1 text-center"
                 />
                 <span>x</span>
                 <input
-                  name="palpiteAway"
                   type="number"
-                  min={0}
-                  max={99}
-                  step={1}
                   inputMode="numeric"
                   defaultValue={pred?.palpiteAway ?? ""}
-                  disabled={locked}
+                  disabled
                   aria-label={`Placar de ${m.awayTeam.nome}`}
                   className="w-14 rounded-md border border-border px-2 py-1 text-center"
                 />
@@ -173,41 +188,35 @@ export default async function PalpitesPage({
                     </span>
                   ) : null}
                 </span>
-                {locked ? (
-                  <span className="text-ink-muted">travado</span>
-                ) : (
-                  <SubmitButton pendingLabel="Salvando...">Salvar</SubmitButton>
-                )}
+                <span className="text-ink-muted">travado</span>
               </div>
 
-              {locked ? (
-                <section className="mt-1 flex flex-col gap-1 border-t border-surface-muted pt-2 text-sm">
-                  <h2 className="font-semibold text-ink-soft">
-                    Palpites dos participantes
-                  </h2>
-                  {revealed.length === 0 ? (
-                    <p className="text-ink-muted">Ninguém palpitou neste jogo.</p>
-                  ) : (
-                    <ul className="flex flex-col gap-1">
-                      {revealed.map((r) => (
-                        <li
-                          key={r.membershipId}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <span className="min-w-0 break-words text-ink-soft">
-                            {r.nome}
-                            {r.membershipId === membership.id ? " (você)" : ""}
-                          </span>
-                          <span className="shrink-0 font-semibold">
-                            {r.palpiteHome} x {r.palpiteAway}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              ) : null}
-            </form>
+              <section className="mt-1 flex flex-col gap-1 border-t border-surface-muted pt-2 text-sm">
+                <h2 className="font-semibold text-ink-soft">
+                  Palpites dos participantes
+                </h2>
+                {revealed.length === 0 ? (
+                  <p className="text-ink-muted">Ninguém palpitou neste jogo.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {revealed.map((r) => (
+                      <li
+                        key={r.membershipId}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="min-w-0 break-words text-ink-soft">
+                          {r.nome}
+                          {r.membershipId === membership.id ? " (você)" : ""}
+                        </span>
+                        <span className="shrink-0 font-semibold">
+                          {r.palpiteHome} x {r.palpiteAway}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           );
         })
       )}
