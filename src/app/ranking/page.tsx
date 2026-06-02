@@ -17,7 +17,7 @@ export default async function RankingPage() {
         <AppNav />
         <h1 className="text-2xl font-bold">Ranking</h1>
         <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-verde-texto underline">
+        <a href="/pools/new" className="text-accent-strong underline">
           Criar um bolão
         </a>
       </main>

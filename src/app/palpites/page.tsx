@@ -23,7 +23,7 @@ export default async function PalpitesPage({
         <AppNav />
         <h1 className="text-2xl font-bold">Palpites</h1>
         <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-verde-texto underline">
+        <a href="/pools/new" className="text-accent-strong underline">
           Criar um bolão
         </a>
       </main>
@@ -104,7 +104,7 @@ export default async function PalpitesPage({
       {erro === "travado" ? (
         <p
           role="alert"
-          className="rounded-md bg-fundo-secao p-3 text-sm text-perigo"
+          className="rounded-md bg-surface-muted p-3 text-sm text-danger"
         >
           Jogo travado: o prazo para palpitar já encerrou.
         </p>
@@ -121,7 +121,7 @@ export default async function PalpitesPage({
             <form
               key={m.id}
               action={savePalpiteAction}
-              className="flex flex-col gap-2 rounded-md border border-borda p-4"
+              className="flex flex-col gap-2 rounded-md border border-border p-4"
             >
               <input type="hidden" name="poolId" value={membership.poolId} />
               <input type="hidden" name="matchId" value={m.id} />
@@ -141,7 +141,7 @@ export default async function PalpitesPage({
                   defaultValue={pred?.palpiteHome ?? ""}
                   disabled={locked}
                   aria-label={`Placar de ${m.homeTeam.nome}`}
-                  className="w-14 rounded-md border border-borda px-2 py-1 text-center"
+                  className="w-14 rounded-md border border-border px-2 py-1 text-center"
                 />
                 <span>x</span>
                 <input
@@ -151,7 +151,7 @@ export default async function PalpitesPage({
                   defaultValue={pred?.palpiteAway ?? ""}
                   disabled={locked}
                   aria-label={`Placar de ${m.awayTeam.nome}`}
-                  className="w-14 rounded-md border border-borda px-2 py-1 text-center"
+                  className="w-14 rounded-md border border-border px-2 py-1 text-center"
                 />
                 <span className="flex min-w-0 items-center gap-2 font-semibold">
                   <span className="truncate">{m.awayTeam.nome}</span>
@@ -165,30 +165,30 @@ export default async function PalpitesPage({
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
                   <span
-                    className={pred ? "text-verde-texto" : "text-texto-mudo"}
+                    className={pred ? "text-accent-strong" : "text-ink-muted"}
                   >
                     {pred ? "feito" : "pendente"}
                   </span>
                   {m.homeTeam.grupo ? (
-                    <span className="rounded bg-fundo-secao px-2 py-0.5 text-xs text-texto-mudo">
+                    <span className="rounded bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">
                       Grupo {m.homeTeam.grupo}
                     </span>
                   ) : null}
                 </span>
                 {locked ? (
-                  <span className="text-texto-mudo">travado</span>
+                  <span className="text-ink-muted">travado</span>
                 ) : (
                   <Button type="submit">Salvar</Button>
                 )}
               </div>
 
               {locked ? (
-                <section className="mt-1 flex flex-col gap-1 border-t border-fundo-secao pt-2 text-sm">
-                  <h2 className="font-semibold text-texto-suave">
+                <section className="mt-1 flex flex-col gap-1 border-t border-surface-muted pt-2 text-sm">
+                  <h2 className="font-semibold text-ink-soft">
                     Palpites dos participantes
                   </h2>
                   {revealed.length === 0 ? (
-                    <p className="text-texto-mudo">
+                    <p className="text-ink-muted">
                       Ninguém palpitou neste jogo.
                     </p>
                   ) : (
@@ -198,7 +198,7 @@ export default async function PalpitesPage({
                           key={r.membershipId}
                           className="flex items-center justify-between"
                         >
-                          <span className="text-texto-suave">
+                          <span className="text-ink-soft">
                             {r.nome}
                             {r.membershipId === membership.id ? " (você)" : ""}
                           </span>

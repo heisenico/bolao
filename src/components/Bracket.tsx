@@ -41,7 +41,7 @@ function TeamRow({
 
 function MatchCell({ match }: { match: BracketColumn["matches"][number] }) {
   return (
-    <div className="rounded-lg border border-borda bg-fundo p-2 text-sm shadow-sm">
+    <div className="rounded-lg border border-border bg-surface p-2 text-sm shadow-sm">
       <TeamRow
         nome={match.homeNome}
         codigoPais={match.homeCodigoPais}
@@ -63,12 +63,12 @@ function MatchCell({ match }: { match: BracketColumn["matches"][number] }) {
 function PhaseColumn({ col }: { col: BracketColumn }) {
   return (
     <section className="flex w-56 shrink-0 flex-col gap-3">
-      <h2 className="text-center text-sm font-bold text-texto">
+      <h2 className="text-center text-sm font-bold text-ink">
         {PHASE_LABEL[col.fase]}
       </h2>
       <div className="flex h-full flex-col justify-around gap-3">
         {col.matches.length === 0 ? (
-          <p className="text-center text-xs text-texto-mudo">A definir</p>
+          <p className="text-center text-xs text-ink-muted">A definir</p>
         ) : (
           col.matches.map((mt) => <MatchCell key={mt.id} match={mt} />)
         )}
@@ -92,7 +92,7 @@ export function Bracket({ columns }: { columns: BracketColumn[] }) {
   const hasAnyMatch = columns.some((c) => c.matches.length > 0);
   if (!hasAnyMatch) {
     return (
-      <p className="rounded-lg border border-dashed border-borda bg-fundo p-8 text-center text-sm text-texto-mudo">
+      <p className="rounded-lg border border-dashed border-border bg-surface p-8 text-center text-sm text-ink-muted">
         O chaveamento aparece após a fase de grupos.
       </p>
     );
@@ -153,8 +153,8 @@ export function Bracket({ columns }: { columns: BracketColumn[] }) {
                 onKeyDown={handleTabKeyDown}
                 className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${
                   selected
-                    ? "bg-verde-acao text-white"
-                    : "bg-fundo-secao text-texto-mudo"
+                    ? "bg-accent text-white"
+                    : "bg-surface-muted text-ink-muted"
                 }`}
               >
                 {PHASE_LABEL[col.fase]}

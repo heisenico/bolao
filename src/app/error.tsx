@@ -25,7 +25,7 @@ export default function Error({
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
       <div role="alert" className="flex flex-col items-center gap-4">
         <h1 className="text-2xl font-bold">Algo deu errado</h1>
-        <p className="text-sm text-texto-suave">
+        <p className="text-sm text-ink-soft">
           Tivemos um problema ao carregar esta página. Tente novamente em alguns
           instantes.
         </p>

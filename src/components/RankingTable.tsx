@@ -19,7 +19,7 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
   return (
     <span
       aria-hidden="true"
-      className="flex h-7 w-7 items-center justify-center rounded-full bg-borda text-xs font-bold text-texto"
+      className="flex h-7 w-7 items-center justify-center rounded-full bg-border text-xs font-bold text-ink"
     >
       {initial}
     </span>
@@ -33,13 +33,13 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
  */
 export function RankingTable({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) {
-    return <p className="text-texto-mudo">Sem participantes ainda.</p>;
+    return <p className="text-ink-muted">Sem participantes ainda.</p>;
   }
 
   return (
     <table className="w-full border-collapse text-left">
       <thead>
-        <tr className="border-b border-borda text-sm text-texto-mudo">
+        <tr className="border-b border-border text-sm text-ink-muted">
           <th scope="col" className="px-2 py-2">#</th>
           <th scope="col" className="px-2 py-2">Nome</th>
           <th scope="col" className="px-2 py-2 text-right">Pontos</th>
@@ -54,8 +54,8 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
               key={row.membershipId}
               data-leader={isLeader ? "true" : "false"}
               className={
-                "border-b border-fundo-secao " +
-                (isLeader ? "bg-verde-acao/10 font-bold" : "")
+                "border-b border-surface-muted " +
+                (isLeader ? "bg-accent/10 font-bold" : "")
               }
             >
               <td className="px-2 py-2" data-cell="position">

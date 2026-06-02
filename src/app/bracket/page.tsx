@@ -14,7 +14,7 @@ export default async function BracketPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <AppNav />
-      <h1 className="mb-4 text-2xl font-bold text-texto">Mata-mata</h1>
+      <h1 className="mb-4 text-2xl font-bold text-ink">Mata-mata</h1>
       {/* football-data.org has not published knockout fixtures yet, so today the
           Bracket renders its own "aparece após a fase de grupos" empty state. */}
       <Bracket columns={columns} />

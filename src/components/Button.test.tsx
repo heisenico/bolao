@@ -13,7 +13,7 @@ describe("Button", () => {
   it("applies the verde-acao primary background by default", () => {
     render(<Button>Confirmar palpite</Button>);
     const btn = screen.getByRole("button", { name: "Confirmar palpite" });
-    expect(btn.className).toContain("bg-verde-acao");
+    expect(btn.className).toContain("bg-accent");
   });
 
   it("calls onClick when clicked", () => {
@@ -32,7 +32,7 @@ describe("Button", () => {
   it("uses a neutral background for the secondary variant", () => {
     render(<Button variant="secondary">Cancelar</Button>);
     const btn = screen.getByRole("button", { name: "Cancelar" });
-    expect(btn.className).toContain("bg-fundo-secao");
-    expect(btn.className).not.toContain("bg-verde-acao");
+    expect(btn.className).toContain("bg-surface-muted");
+    expect(btn.className).not.toContain("bg-accent");
   });
 });

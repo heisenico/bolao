@@ -101,7 +101,7 @@ This system explicitly rejects two things. It is **not a gambling or betting sit
 A near-monochrome white-and-ink field with one committed green accent and a small set of functional signal colors.
 
 ### Primary
-- **Pitch Green** (`#06AA48`): the single committed accent. Primary buttons ("Entrar com link mágico", "Confirmar palpite", "Confirmar pagamento"), text links, the focused input border, the "palpite feito" state, and the leader row highlight (used at ~10% opacity, `bg-verde-acao/10`). It means *go / done / confirmed*. It is the only saturated hue on most screens, and that rarity is what makes it read as action.
+- **Pitch Green** (`#06AA48`): the single committed accent. Primary buttons ("Entrar com link mágico", "Confirmar palpite", "Confirmar pagamento"), text links, the focused input border, the "palpite feito" state, and the leader row highlight (used at ~10% opacity, `bg-accent/10`). It means *go / done / confirmed*. It is the only saturated hue on most screens, and that rarity is what makes it read as action.
 
 ### Neutral
 - **Ink** (`#111111`): default body and heading text on white. The page default set on `<body>`.
@@ -171,14 +171,14 @@ Flat by default. The system conveys depth through `#CCCCCC` hairline borders and
 
 ### Inputs / Fields
 - **Style:** white fill, 1px `#CCCCCC` border, 6px radius, padding `8px 12px` (`px-3 py-2`), `text-base` (16px — large enough to prevent iOS zoom-on-focus).
-- **Focus:** border shifts to Pitch Green (`focus:border-verde-acao`), `outline: none`. Add a matching focus ring for keyboard visibility.
+- **Focus:** border shifts to Pitch Green (`focus:border-accent`), `outline: none`. Add a matching focus ring for keyboard visibility.
 - **Label:** Label role (`text-sm`, weight 500), stacked above the field.
 
 ### Tables (Ranking)
 - **Structure:** full-width, `border-collapse`, left-aligned; numeric columns (Pontos, Cravadas) right-aligned.
 - **Header:** `text-sm` Ink Muted (`#666666`), bottom rule `#CCCCCC`.
 - **Rows:** divided by `#F3F3F3` bottom borders.
-- **Leader row:** highlighted with `bg-verde-acao/10` (Pitch Green at 10%) and weight 700 — the one place ranking position earns color. Carry a non-color cue too (position "1", bold) so the highlight isn't color-only.
+- **Leader row:** highlighted with `bg-accent/10` (Pitch Green at 10%) and weight 700 — the one place ranking position earns color. Carry a non-color cue too (position "1", bold) so the highlight isn't color-only.
 
 ### Avatar
 - **Shape:** 28px circle (`rounded-full`).

@@ -19,7 +19,7 @@ export default async function NewPoolPage() {
             type="text"
             required
             placeholder="Bolão dos Amigos"
-            className="rounded-md border border-borda px-3 py-2"
+            className="rounded-md border border-border px-3 py-2"
           />
         </label>
 
@@ -31,7 +31,7 @@ export default async function NewPoolPage() {
             inputMode="decimal"
             required
             placeholder="25,00"
-            className="rounded-md border border-borda px-3 py-2"
+            className="rounded-md border border-border px-3 py-2"
           />
         </label>
 
@@ -42,7 +42,7 @@ export default async function NewPoolPage() {
             type="text"
             required
             placeholder="email@pix ou telefone ou aleatória"
-            className="rounded-md border border-borda px-3 py-2"
+            className="rounded-md border border-border px-3 py-2"
           />
         </label>
 

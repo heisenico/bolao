@@ -2,36 +2,36 @@
 
 @theme {
   /* Brand accent */
-  --color-verde-acao: #06AA48; /* fills, >=18px/bold text, leader tint */
-  --color-verde-texto: #057A33; /* link/body-size text on white: ~5.5:1 (AA) */
+  --color-accent: #06AA48; /* fills, >=18px/bold text, leader tint */
+  --color-accent-strong: #057A33; /* link/body-size text on white: ~5.5:1 (AA) */
 
   /* Surfaces */
-  --color-fundo: #FFFFFF;
-  --color-fundo-suave: #FAFAFA;
-  --color-fundo-secao: #F3F3F3;
-  --color-borda: #CCCCCC;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #FAFAFA;
+  --color-surface-muted: #F3F3F3;
+  --color-border: #CCCCCC;
 
   /* Text ramp (all AA on white) */
-  --color-texto: #111111; /* primary ~18.9:1 */
-  --color-texto-suave: #555555; /* secondary ~7.5:1 */
-  --color-texto-mudo: #666666; /* muted/status floor ~5.7:1 */
+  --color-ink: #111111; /* primary ~18.9:1 */
+  --color-ink-soft: #555555; /* secondary ~7.5:1 */
+  --color-ink-muted: #666666; /* muted/status floor ~5.7:1 */
 
   /* Destructive/error */
-  --color-perigo: #B00020; /* ~7.3:1 on white */
+  --color-danger: #B00020; /* ~7.3:1 on white */
 
   --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background-color: var(--color-fundo);
-  color: var(--color-texto);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
 
 /* Visible keyboard focus on every interactive element (PRODUCT.md: WCAG 2.2 AA, SC 2.4.7).
    Buttons opt out (focus-visible:outline-none) and draw their own ring instead. */
 :focus-visible {
-  outline: 2px solid var(--color-verde-acao);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -39,7 +39,7 @@ body {
 /* Placeholder must meet AA (>=4.5:1); the browser default often does not. */
 input::placeholder,
 textarea::placeholder {
-  color: var(--color-texto-mudo);
+  color: var(--color-ink-muted);
   opacity: 1;
 }
 

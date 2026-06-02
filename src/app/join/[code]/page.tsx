@@ -38,7 +38,7 @@ export default async function JoinPoolPage({
           <h1 className="text-2xl font-bold">{pool.nome}</h1>
           <p
             role="alert"
-            className="rounded-md bg-fundo-secao p-3 text-sm text-perigo"
+            className="rounded-md bg-surface-muted p-3 text-sm text-danger"
           >
             As inscrições deste bolão já encerraram (1h antes do primeiro jogo).
           </p>
@@ -54,7 +54,7 @@ export default async function JoinPoolPage({
       <AppNav />
       <h1 className="text-2xl font-bold">{pool.nome}</h1>
 
-      <section className="flex flex-col gap-2 rounded-md border border-borda bg-fundo-suave p-4">
+      <section className="flex flex-col gap-2 rounded-md border border-border bg-surface-soft p-4">
         <h2 className="text-lg font-semibold">Pagamento via PIX</h2>
         <p>
           Valor de entrada: <strong>{formatCentsBRL(pool.valorEntrada)}</strong>
@@ -62,7 +62,7 @@ export default async function JoinPoolPage({
         <p>
           Chave PIX: <strong className="break-all">{pool.chavePix}</strong>
         </p>
-        <ol className="list-decimal pl-5 text-sm text-texto-suave">
+        <ol className="list-decimal pl-5 text-sm text-ink-soft">
           <li>Abra o app do seu banco e faça o PIX para a chave acima.</li>
           <li>Confira o valor de entrada.</li>
           <li>
@@ -84,13 +84,13 @@ export default async function JoinPoolPage({
             <Button type="submit">Já paguei</Button>
           </form>
         ) : (
-          <p className="text-sm text-verde-texto">
+          <p className="text-sm text-accent-strong">
             Pagamento registrado. Aguarde a confirmação do organizador.
           </p>
         )}
       </section>
 
-      <a href="/palpites" className="text-verde-texto underline">
+      <a href="/palpites" className="text-accent-strong underline">
         Ir para os palpites
       </a>
     </main>

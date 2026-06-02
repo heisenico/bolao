@@ -32,12 +32,12 @@ export default async function DashboardPage() {
       <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
         <AppNav />
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-texto-suave">
+        <p className="text-sm text-ink-soft">
           Você está logado como{" "}
           <span className="font-medium">{session.user?.email}</span>.
         </p>
         <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-verde-texto underline">
+        <a href="/pools/new" className="text-accent-strong underline">
           Criar um bolão
         </a>
         <form action={logout}>
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
             return (
               <li
                 key={m.id}
-                className="flex flex-col gap-1 rounded-md border border-borda p-4"
+                className="flex flex-col gap-1 rounded-md border border-border p-4"
               >
                 <div className="flex items-center justify-between font-semibold">
                   <span className="flex min-w-0 items-center gap-2">
@@ -104,15 +104,15 @@ export default async function DashboardPage() {
                     />
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm text-texto-suave">
+                <div className="flex items-center justify-between text-sm text-ink-soft">
                   <span>Jogo: {formatSaoPaulo(m.dataHora)}</span>
                   <span>Prazo: {formatSaoPaulo(deadline)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className={done ? "text-verde-texto" : "text-texto-mudo"}>
+                  <span className={done ? "text-accent-strong" : "text-ink-muted"}>
                     {done ? "palpite feito" : "palpite pendente"}
                   </span>
-                  <span className="text-texto-mudo">
+                  <span className="text-ink-muted">
                     {locked ? "travado" : "aberto"}
                   </span>
                 </div>
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
         </ul>
       )}
 
-      <a href="/palpites" className="text-verde-texto underline">
+      <a href="/palpites" className="text-accent-strong underline">
         Fazer/editar palpites
       </a>
       <form action={logout}>

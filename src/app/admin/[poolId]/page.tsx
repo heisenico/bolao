@@ -75,12 +75,12 @@ export default async function AdminPage({
       return (
         <main className="mx-auto max-w-md px-4 py-10">
           <AppNav />
-          <div className="rounded-lg border border-borda bg-fundo-suave p-6 text-center">
+          <div className="rounded-lg border border-border bg-surface-soft p-6 text-center">
             <h1 className="text-2xl font-bold">Não autorizado</h1>
-            <p className="mt-2 text-sm text-texto-mudo">
+            <p className="mt-2 text-sm text-ink-muted">
               Apenas o organizador do bolão pode acessar a administração.
             </p>
-            <a href="/dashboard" className="mt-4 inline-block text-sm font-semibold text-verde-texto underline">
+            <a href="/dashboard" className="mt-4 inline-block text-sm font-semibold text-accent-strong underline">
               Voltar ao início
             </a>
           </div>
@@ -122,19 +122,19 @@ export default async function AdminPage({
       </div>
 
       {/* Prize summary (winner-takes-all, CONTRACT §4) */}
-      <section className="rounded-lg border border-borda bg-fundo-suave p-4">
+      <section className="rounded-lg border border-border bg-surface-soft p-4">
         <h2 className="text-lg font-bold">Prêmio</h2>
-        <p className="mt-1 text-2xl font-bold text-verde-acao">{formatCentsBRL(summary.total)}</p>
-        <p className="text-sm text-texto-mudo">
+        <p className="mt-1 text-2xl font-bold text-accent">{formatCentsBRL(summary.total)}</p>
+        <p className="text-sm text-ink-muted">
           Ganhador atual: {summary.winner ? summary.winner.nome : "—"}
         </p>
       </section>
 
       {/* Manual result form (CONTRACT §11.1) */}
-      <section className="rounded-lg border border-borda p-4">
+      <section className="rounded-lg border border-border p-4">
         <h2 className="text-lg font-bold">Registrar/corrigir resultado</h2>
         {matches.length === 0 ? (
-          <p className="mt-2 text-sm text-texto-mudo">
+          <p className="mt-2 text-sm text-ink-muted">
             Nenhum jogo disponível ainda. Sincronize os jogos.
           </p>
         ) : (
@@ -142,7 +142,7 @@ export default async function AdminPage({
             <input type="hidden" name="poolId" value={poolId} />
             <label className="flex flex-col text-sm">
               Jogo
-              <select name="matchId" className="rounded-md border border-borda p-2" required>
+              <select name="matchId" className="rounded-md border border-border p-2" required>
                 {matchOptions}
               </select>
             </label>
@@ -153,7 +153,7 @@ export default async function AdminPage({
                 name="placarHome"
                 min={0}
                 required
-                className="w-16 rounded-md border border-borda p-2"
+                className="w-16 rounded-md border border-border p-2"
               />
             </label>
             <label className="flex flex-col text-sm">
@@ -163,28 +163,28 @@ export default async function AdminPage({
                 name="placarAway"
                 min={0}
                 required
-                className="w-16 rounded-md border border-borda p-2"
+                className="w-16 rounded-md border border-border p-2"
               />
             </label>
             <Button type="submit">Salvar resultado</Button>
           </form>
         )}
-        <p className="mt-2 text-xs text-texto-mudo">
+        <p className="mt-2 text-xs text-ink-muted">
           W.O.: registre o 3×0 oficial aqui como resultado manual normal (CONTRACT §11.8).
         </p>
       </section>
 
       {/* Cancel a match (status cancelada, void points — CONTRACT §11.8) */}
-      <section className="rounded-lg border border-borda p-4">
+      <section className="rounded-lg border border-border p-4">
         <h2 className="text-lg font-bold">Cancelar jogo</h2>
         {matches.length === 0 ? (
-          <p className="mt-2 text-sm text-texto-mudo">Nenhum jogo disponível ainda.</p>
+          <p className="mt-2 text-sm text-ink-muted">Nenhum jogo disponível ainda.</p>
         ) : (
           <form action={cancelMatchAction} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="poolId" value={poolId} />
             <label className="flex flex-col text-sm">
               Jogo
-              <select name="matchId" className="rounded-md border border-borda p-2" required>
+              <select name="matchId" className="rounded-md border border-border p-2" required>
                 {matchOptions}
               </select>
             </label>
@@ -196,14 +196,14 @@ export default async function AdminPage({
       </section>
 
       {/* Members + payments (CONTRACT §7) */}
-      <section className="rounded-lg border border-borda p-4">
+      <section className="rounded-lg border border-border p-4">
         <h2 className="text-lg font-bold">Participantes</h2>
-        <ul className="mt-3 divide-y divide-fundo-secao">
+        <ul className="mt-3 divide-y divide-surface-muted">
           {pool.memberships.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span className="text-sm">
                 {m.user.name ?? m.user.email}
-                <span className="ml-2 text-xs text-texto-mudo">[{PAYMENT_STATUS_LABEL[m.paymentStatus]}]</span>
+                <span className="ml-2 text-xs text-ink-muted">[{PAYMENT_STATUS_LABEL[m.paymentStatus]}]</span>
               </span>
               <span className="flex gap-2">
                 {m.paymentStatus !== "confirmado" && (
@@ -229,16 +229,16 @@ export default async function AdminPage({
       </section>
 
       {/* Invite / share (CONTRACT §8 admin invite section) */}
-      <section className="rounded-lg border border-borda p-4">
+      <section className="rounded-lg border border-border p-4">
         <h2 className="text-lg font-bold">Convidar</h2>
-        <p className="mt-2 break-all text-sm text-texto-mudo">{join}</p>
+        <p className="mt-2 break-all text-sm text-ink-muted">{join}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <CopyLinkButton url={join} />
           <a
             href={whatsapp}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md bg-[#25D366] px-3 py-2 text-sm font-semibold text-texto"
+            className="rounded-md bg-[#25D366] px-3 py-2 text-sm font-semibold text-ink"
           >
             Compartilhar no WhatsApp
           </a>

@@ -22,7 +22,7 @@ export function AppNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="flex gap-1 overflow-x-auto border-b border-borda pb-2"
+      className="flex gap-1 overflow-x-auto border-b border-border pb-2"
     >
       {LINKS.map((l) => {
         const active = pathname === l.href;
@@ -34,8 +34,8 @@ export function AppNav() {
             className={
               "shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition-colors " +
               (active
-                ? "bg-fundo-secao text-texto"
-                : "text-texto-suave hover:bg-fundo-secao hover:text-texto")
+                ? "bg-surface-muted text-ink"
+                : "text-ink-soft hover:bg-surface-muted hover:text-ink")
             }
           >
             {l.label}

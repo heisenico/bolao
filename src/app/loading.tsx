@@ -10,11 +10,11 @@ export default function Loading() {
       aria-label="Carregando"
       className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10"
     >
-      <div className="h-8 w-1/2 animate-pulse rounded-md bg-fundo-secao" />
+      <div className="h-8 w-1/2 animate-pulse rounded-md bg-surface-muted" />
       <div className="flex flex-col gap-3">
-        <div className="h-20 animate-pulse rounded-md bg-fundo-secao" />
-        <div className="h-20 animate-pulse rounded-md bg-fundo-secao" />
-        <div className="h-20 animate-pulse rounded-md bg-fundo-secao" />
+        <div className="h-20 animate-pulse rounded-md bg-surface-muted" />
+        <div className="h-20 animate-pulse rounded-md bg-surface-muted" />
+        <div className="h-20 animate-pulse rounded-md bg-surface-muted" />
       </div>
     </main>
   );
