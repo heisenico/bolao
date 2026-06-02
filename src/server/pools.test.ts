@@ -4,7 +4,6 @@ import { LOCK_LEAD_MS } from '@/domain/deadline'
 import {
   EntryClosedError,
   createPool,
-  getCurrentMembership,
   getMembership,
   joinPool,
   listUserMemberships,
@@ -128,28 +127,6 @@ describe('pools service (integration)', () => {
     const pool = await createPool({ ownerId, nome: 'Empty', valorEntrada: 1000, chavePix: 'x@pix' })
     const stranger = await makeUser(`s-${Date.now()}@test.dev`)
     expect(await getMembership(pool.id, stranger.id)).toBeNull()
-  })
-
-  it('getCurrentMembership returns null when the user has no membership', async () => {
-    const stranger = await makeUser(`gc-none-${Date.now()}@test.dev`)
-    expect(await getCurrentMembership(stranger.id)).toBeNull()
-  })
-
-  it('getCurrentMembership returns the earliest-joined membership for the user', async () => {
-    const poolA = await createPool({ ownerId, nome: 'First', valorEntrada: 1000, chavePix: 'a@pix' })
-    const poolB = await createPool({ ownerId, nome: 'Second', valorEntrada: 1000, chavePix: 'b@pix' })
-    const member = await makeUser(`gc-${Date.now()}@test.dev`)
-
-    const first = await joinPool({ inviteCode: poolA.inviteCode, userId: member.id })
-    // Force a strictly later joinedAt for the second membership so ordering is deterministic.
-    const second = await joinPool({ inviteCode: poolB.inviteCode, userId: member.id })
-    await prisma.poolMembership.update({
-      where: { id: second.id },
-      data: { joinedAt: new Date(first.joinedAt.getTime() + 1000) },
-    })
-
-    const current = await getCurrentMembership(member.id)
-    expect(current?.id).toBe(first.id)
   })
 
   it('listUserMemberships returns an empty list when the user has no pools', async () => {

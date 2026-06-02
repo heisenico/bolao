@@ -74,7 +74,7 @@ export default async function AdminPage({
     if (err instanceof OwnershipError) {
       return (
         <main className="mx-auto max-w-md px-4 py-10">
-          <AppNav />
+          <AppNav poolId={poolId} />
           <div className="rounded-lg border border-border bg-surface-soft p-6 text-center">
             <h1 className="text-2xl font-bold">Não autorizado</h1>
             <p className="mt-2 text-sm text-ink-muted">
@@ -109,7 +109,7 @@ export default async function AdminPage({
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-6">
-      <AppNav />
+      <AppNav poolId={poolId} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold break-words">Admin — {pool.nome}</h1>
         {/* Owner-only fixtures sync (CONTRACT §11.6) */}

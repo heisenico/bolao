@@ -105,19 +105,6 @@ export async function getMembership(
 }
 
 /**
- * Resolve the viewer's single current pool membership (contract §11.4).
- * v1 assumes a user is effectively in one pool; picks the earliest-joined one.
- */
-export async function getCurrentMembership(
-  userId: string,
-): Promise<PoolMembership | null> {
-  return prisma.poolMembership.findFirst({
-    where: { userId },
-    orderBy: { joinedAt: 'asc' },
-  })
-}
-
-/**
  * All bolões the user belongs to, earliest-joined first, each with the pool's
  * id/nome/ownerId (enough for the "Meus bolões" list and an owner check). The
  * schema allows a user in many pools (@@unique([poolId, userId])).

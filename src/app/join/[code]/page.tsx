@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { EntryClosedError, joinPool, getMembership } from "@/server/pools";
 import { formatCentsBRL } from "@/lib/money";
 import { SubmitButton } from "@/components/SubmitButton";
-import { AppNav } from "@/components/AppNav";
 import { markPaidAction } from "./actions";
 
 export default async function JoinPoolPage({
@@ -18,7 +17,6 @@ export default async function JoinPoolPage({
   if (!pool) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
-        <AppNav />
         <h1 className="text-2xl font-bold">Convite inválido</h1>
         <p>Não encontramos um bolão com este código.</p>
       </main>
@@ -34,7 +32,6 @@ export default async function JoinPoolPage({
     if (err instanceof EntryClosedError) {
       return (
         <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
-          <AppNav />
           <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
           <p
             role="alert"
@@ -51,7 +48,6 @@ export default async function JoinPoolPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
-      <AppNav />
       <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
 
       <section className="flex flex-col gap-2 rounded-md border border-border bg-surface-soft p-4">
@@ -90,8 +86,8 @@ export default async function JoinPoolPage({
         )}
       </section>
 
-      <a href="/palpites" className="text-accent-strong underline">
-        Ir para os palpites
+      <a href={`/pools/${pool.id}`} className="text-accent-strong underline">
+        Ir para o bolão
       </a>
     </main>
   );

@@ -1,34 +1,28 @@
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { isMatchLocked } from "@/domain/deadline";
-import { getCurrentMembership } from "@/server/pools";
+import { getMembership } from "@/server/pools";
 import { getVisiblePredictions } from "@/server/predictions";
 import { Flag } from "@/components/Flag";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
-import { savePalpiteAction } from "./actions";
+import { savePalpiteAction } from "@/app/palpites/actions";
 
 export default async function PalpitesPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ poolId: string }>;
   searchParams: Promise<{ erro?: string }>;
 }) {
+  const { poolId } = await params;
   const { erro } = await searchParams;
   const session = await requireSession();
 
-  const membership = await getCurrentMembership(session.user.id);
-  if (!membership) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
-        <AppNav />
-        <h1 className="text-2xl font-bold">Palpites</h1>
-        <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-accent-strong underline">
-          Criar um bolão
-        </a>
-      </main>
-    );
-  }
+  // Membership guard: only members of this pool may predict in it.
+  const membership = await getMembership(poolId, session.user.id);
+  if (!membership) redirect("/dashboard");
 
   const now = new Date();
 
@@ -54,8 +48,6 @@ export default async function PalpitesPage({
   const byMatch = new Map(predictions.map((p) => [p.matchId, p]));
 
   // For locked matches, reveal every member's prediction (contract §6 reveal-after-lock).
-  // getVisiblePredictions returns only the viewer's own row while the match is open,
-  // so this map is non-empty (beyond the viewer) only once a match has locked.
   const lockedMatches = matches.filter((m) => isMatchLocked(m.dataHora, now));
   const revealedByMatch = new Map<
     string,
@@ -66,9 +58,6 @@ export default async function PalpitesPage({
       palpiteAway: number;
     }[]
   >();
-  // Run the per-match reveal queries concurrently (still via getVisiblePredictions,
-  // so the reveal-after-lock rule is preserved), then resolve all member names in a
-  // single batched query instead of one findMany per match.
   const visibleByMatch = await Promise.all(
     lockedMatches.map((m) => getVisiblePredictions(m.id, membership.id, now))
   );
@@ -99,7 +88,7 @@ export default async function PalpitesPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
-      <AppNav />
+      <AppNav poolId={poolId} />
       <h1 className="text-2xl font-bold">Palpites — fase {currentPhase}</h1>
       {erro === "travado" ? (
         <p
@@ -126,7 +115,7 @@ export default async function PalpitesPage({
               action={savePalpiteAction}
               className="flex flex-col gap-2 rounded-md border border-border p-4"
             >
-              <input type="hidden" name="poolId" value={membership.poolId} />
+              <input type="hidden" name="poolId" value={poolId} />
               <input type="hidden" name="matchId" value={m.id} />
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2 font-semibold">
@@ -197,9 +186,7 @@ export default async function PalpitesPage({
                     Palpites dos participantes
                   </h2>
                   {revealed.length === 0 ? (
-                    <p className="text-ink-muted">
-                      Ninguém palpitou neste jogo.
-                    </p>
+                    <p className="text-ink-muted">Ninguém palpitou neste jogo.</p>
                   ) : (
                     <ul className="flex flex-col gap-1">
                       {revealed.map((r) => (

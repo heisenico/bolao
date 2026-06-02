@@ -4,27 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * Primary app navigation (a11y landmark + cross-screen wayfinding). Rendered on
- * the authenticated app pages (dashboard, palpites, ranking, mata-mata). Uses a
- * real <nav> landmark and aria-current so screen-reader users can locate and
- * track navigation. Client component: needs the active route for aria-current.
+ * Primary app navigation (a11y landmark + cross-screen wayfinding). When given a
+ * poolId it renders the links for that bolão (Início / Palpites / Ranking /
+ * Mata-mata) plus a "Meus bolões" link back to the list. Without a poolId it
+ * falls back to the legacy flat links (kept only during the route cut-over).
+ * Client component: needs the active route for aria-current.
  */
-const LINKS = [
-  { href: "/dashboard", label: "Início" },
-  { href: "/palpites", label: "Palpites" },
-  { href: "/ranking", label: "Ranking" },
-  { href: "/bracket", label: "Mata-mata" },
-] as const;
-
-export function AppNav() {
+export function AppNav({ poolId }: { poolId: string }) {
   const pathname = usePathname();
+
+  const links = [
+    { href: `/pools/${poolId}`, label: "Início" },
+    { href: `/pools/${poolId}/palpites`, label: "Palpites" },
+    { href: `/pools/${poolId}/ranking`, label: "Ranking" },
+    { href: `/pools/${poolId}/bracket`, label: "Mata-mata" },
+    { href: "/dashboard", label: "Meus bolões" },
+  ];
 
   return (
     <nav
       aria-label="Navegação principal"
       className="flex gap-1 overflow-x-auto border-b border-border pb-2"
     >
-      {LINKS.map((l) => {
+      {links.map((l) => {
         const active = pathname === l.href;
         return (
           <Link

@@ -39,10 +39,10 @@ export async function savePalpiteAction(formData: FormData): Promise<void> {
     // Locked at write time (contract §5): surface a "jogo travado" message
     // instead of crashing the page. Re-throw anything else.
     if (err instanceof PredictionLockedError) {
-      redirect("/palpites?erro=travado");
+      redirect(`/pools/${poolId}/palpites?erro=travado`);
     }
     throw err;
   }
 
-  revalidatePath("/palpites");
+  revalidatePath(`/pools/${poolId}/palpites`);
 }

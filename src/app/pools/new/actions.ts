@@ -25,5 +25,5 @@ export async function createPoolAction(formData: FormData): Promise<void> {
     chavePix,
   });
 
-  redirect(`/join/${pool.inviteCode}`);
+  redirect(`/pools/${pool.id}`);
 }
