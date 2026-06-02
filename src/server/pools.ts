@@ -116,3 +116,16 @@ export async function getCurrentMembership(
     orderBy: { joinedAt: 'asc' },
   })
 }
+
+/**
+ * All bolões the user belongs to, earliest-joined first, each with the pool's
+ * id/nome/ownerId (enough for the "Meus bolões" list and an owner check). The
+ * schema allows a user in many pools (@@unique([poolId, userId])).
+ */
+export async function listUserMemberships(userId: string) {
+  return prisma.poolMembership.findMany({
+    where: { userId },
+    orderBy: { joinedAt: 'asc' },
+    include: { pool: { select: { id: true, nome: true, ownerId: true } } },
+  })
+}

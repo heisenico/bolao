@@ -7,6 +7,7 @@ import {
   getCurrentMembership,
   getMembership,
   joinPool,
+  listUserMemberships,
 } from './pools'
 
 async function makeUser(email: string) {
@@ -149,5 +150,28 @@ describe('pools service (integration)', () => {
 
     const current = await getCurrentMembership(member.id)
     expect(current?.id).toBe(first.id)
+  })
+
+  it('listUserMemberships returns an empty list when the user has no pools', async () => {
+    const stranger = await makeUser(`lm-none-${Date.now()}@test.dev`)
+    expect(await listUserMemberships(stranger.id)).toEqual([])
+  })
+
+  it('listUserMemberships returns every pool the user is in, earliest-joined first, with pool info', async () => {
+    const poolA = await createPool({ ownerId, nome: 'Alpha', valorEntrada: 1000, chavePix: 'a@pix' })
+    const poolB = await createPool({ ownerId, nome: 'Beta', valorEntrada: 1000, chavePix: 'b@pix' })
+    const member = await makeUser(`lm-${Date.now()}@test.dev`)
+
+    const first = await joinPool({ inviteCode: poolA.inviteCode, userId: member.id })
+    const second = await joinPool({ inviteCode: poolB.inviteCode, userId: member.id })
+    await prisma.poolMembership.update({
+      where: { id: second.id },
+      data: { joinedAt: new Date(first.joinedAt.getTime() + 1000) },
+    })
+
+    const list = await listUserMemberships(member.id)
+    expect(list).toHaveLength(2)
+    expect(list.map((m) => m.pool.nome)).toEqual(['Alpha', 'Beta'])
+    expect(list[0].pool.ownerId).toBe(ownerId)
   })
 })
