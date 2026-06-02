@@ -2,6 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 import { Button, type ButtonProps } from "@/components/Button";
+import { BallSpinner } from "@/components/BallSpinner";
 
 interface SubmitButtonProps extends Omit<ButtonProps, "type"> {
   /** Label shown while the parent form's server action is in flight (e.g. "Salvando..."). */
@@ -27,7 +28,14 @@ export function SubmitButton({
       aria-busy={pending || undefined}
       {...props}
     >
-      {pending && pendingLabel ? pendingLabel : children}
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <BallSpinner />
+          {pendingLabel ?? children}
+        </span>
+      ) : (
+        children
+      )}
     </Button>
   );
 }
