@@ -21,7 +21,7 @@ export default async function LoginPage() {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Bolão da Copa 2026</h1>
-        <p className="text-sm text-[#555555]">
+        <p className="text-sm text-texto-suave">
           Entre com seu e-mail e enviaremos um link mágico de acesso.
         </p>
       </div>
@@ -34,8 +34,9 @@ export default async function LoginPage() {
           name="email"
           type="email"
           required
+          autoComplete="email"
           placeholder="voce@exemplo.com"
-          className="rounded-md border border-borda bg-fundo px-3 py-2 text-base outline-none focus:border-verde-acao"
+          className="rounded-md border border-borda bg-fundo px-3 py-2 text-base focus:border-verde-acao"
         />
         <Button type="submit">Entrar com link mágico</Button>
       </form>

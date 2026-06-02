@@ -5,6 +5,7 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
   if (image) {
     // Plain <img> (not next/image): remote avatar URLs, no loader config in v1.
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={image}
         alt={nome}
@@ -18,7 +19,7 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
   return (
     <span
       aria-hidden="true"
-      className="flex h-7 w-7 items-center justify-center rounded-full bg-[#CCCCCC] text-xs font-bold text-[#222222]"
+      className="flex h-7 w-7 items-center justify-center rounded-full bg-borda text-xs font-bold text-texto"
     >
       {initial}
     </span>
@@ -32,17 +33,17 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
  */
 export function RankingTable({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) {
-    return <p className="text-[#666666]">Sem participantes ainda.</p>;
+    return <p className="text-texto-mudo">Sem participantes ainda.</p>;
   }
 
   return (
     <table className="w-full border-collapse text-left">
       <thead>
-        <tr className="border-b border-borda text-sm text-[#666666]">
-          <th className="px-2 py-2">#</th>
-          <th className="px-2 py-2">Nome</th>
-          <th className="px-2 py-2 text-right">Pontos</th>
-          <th className="px-2 py-2 text-right">Cravadas</th>
+        <tr className="border-b border-borda text-sm text-texto-mudo">
+          <th scope="col" className="px-2 py-2">#</th>
+          <th scope="col" className="px-2 py-2">Nome</th>
+          <th scope="col" className="px-2 py-2 text-right">Pontos</th>
+          <th scope="col" className="px-2 py-2 text-right">Cravadas</th>
         </tr>
       </thead>
       <tbody>
@@ -53,7 +54,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
               key={row.membershipId}
               data-leader={isLeader ? "true" : "false"}
               className={
-                "border-b border-[#F3F3F3] " +
+                "border-b border-fundo-secao " +
                 (isLeader ? "bg-verde-acao/10 font-bold" : "")
               }
             >

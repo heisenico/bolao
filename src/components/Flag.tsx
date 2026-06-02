@@ -33,8 +33,19 @@ export function Flag({ codigoPais, bandeira, className }: FlagProps) {
   if (bandeira && bandeira.trim() !== "") {
     return (
       // Plain <img> (not next/image): remote crest URLs, no loader config in v1.
+      // alt="" (decorative): the team name is always rendered adjacent, so the
+      // crest is redundant for AT and an empty alt avoids a double announcement.
+      // Intrinsic width/height reserve layout space (avoids CLS); class still sizes it.
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={bandeira} alt={codigoPais} className={className} />
+      <img
+        src={bandeira}
+        alt=""
+        width={24}
+        height={16}
+        loading="lazy"
+        decoding="async"
+        className={className}
+      />
     );
   }
   const flag = toFlagEmoji(codigoPais);

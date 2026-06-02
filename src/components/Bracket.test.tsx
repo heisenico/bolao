@@ -72,12 +72,14 @@ describe("Bracket", () => {
         awayBandeira: null,
       }),
     ]);
-    render(<Bracket columns={columns} />);
+    const { container } = render(<Bracket columns={columns} />);
     // Home flag is the real crest image (bandeira passed through to Flag).
-    const imgs = screen.getAllByAltText("BRA");
+    // Flag renders crests with a decorative empty alt, so query by src.
+    const imgs = Array.from(container.querySelectorAll("img")).filter(
+      (i) => i.getAttribute("src") === crest
+    );
     expect(imgs.length).toBeGreaterThan(0);
     expect(imgs[0].tagName).toBe("IMG");
-    expect(imgs[0]).toHaveAttribute("src", crest);
     // Away flag falls back to the emoji/code path (no bandeira).
     expect(screen.getAllByLabelText("CRO").length).toBeGreaterThan(0);
   });

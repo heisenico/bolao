@@ -5,6 +5,7 @@ import { getCurrentMembership } from "@/server/pools";
 import { getVisiblePredictions } from "@/server/predictions";
 import { Flag } from "@/components/Flag";
 import { Button } from "@/components/Button";
+import { AppNav } from "@/components/AppNav";
 import { savePalpiteAction } from "./actions";
 
 export default async function PalpitesPage({
@@ -19,9 +20,10 @@ export default async function PalpitesPage({
   if (!membership) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
+        <AppNav />
         <h1 className="text-2xl font-bold">Palpites</h1>
         <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-verde-acao underline">
+        <a href="/pools/new" className="text-verde-texto underline">
           Criar um bolão
         </a>
       </main>
@@ -64,35 +66,46 @@ export default async function PalpitesPage({
       palpiteAway: number;
     }[]
   >();
-  for (const m of lockedMatches) {
-    const visible = await getVisiblePredictions(m.id, membership.id, now);
-    const membershipIds = visible.map((p) => p.membershipId);
-    const members = await prisma.poolMembership.findMany({
-      where: { id: { in: membershipIds } },
-      include: { user: true },
-    });
-    const nameById = new Map(
-      members.map((mem) => [
-        mem.id,
-        mem.user.name ?? mem.user.email ?? "Participante",
-      ])
-    );
+  // Run the per-match reveal queries concurrently (still via getVisiblePredictions,
+  // so the reveal-after-lock rule is preserved), then resolve all member names in a
+  // single batched query instead of one findMany per match.
+  const visibleByMatch = await Promise.all(
+    lockedMatches.map((m) => getVisiblePredictions(m.id, membership.id, now))
+  );
+  const allMembershipIds = [
+    ...new Set(visibleByMatch.flat().map((p) => p.membershipId)),
+  ];
+  const members = await prisma.poolMembership.findMany({
+    where: { id: { in: allMembershipIds } },
+    include: { user: true },
+  });
+  const nameById = new Map(
+    members.map((mem) => [
+      mem.id,
+      mem.user.name ?? mem.user.email ?? "Participante",
+    ])
+  );
+  lockedMatches.forEach((m, i) => {
     revealedByMatch.set(
       m.id,
-      visible.map((p) => ({
+      visibleByMatch[i].map((p) => ({
         membershipId: p.membershipId,
         nome: nameById.get(p.membershipId) ?? "Participante",
         palpiteHome: p.palpiteHome,
         palpiteAway: p.palpiteAway,
       }))
     );
-  }
+  });
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
+      <AppNav />
       <h1 className="text-2xl font-bold">Palpites — fase {currentPhase}</h1>
       {erro === "travado" ? (
-        <p className="rounded-md bg-fundo-secao p-3 text-sm text-[#B00020]">
+        <p
+          role="alert"
+          className="rounded-md bg-fundo-secao p-3 text-sm text-perigo"
+        >
           Jogo travado: o prazo para palpitar já encerrou.
         </p>
       ) : null}
@@ -113,13 +126,13 @@ export default async function PalpitesPage({
               <input type="hidden" name="poolId" value={membership.poolId} />
               <input type="hidden" name="matchId" value={m.id} />
               <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 font-semibold">
+                <span className="flex min-w-0 items-center gap-2 font-semibold">
                   <Flag
                     codigoPais={m.homeTeam.codigoPais}
                     bandeira={m.homeTeam.bandeira}
-                    className="h-4 w-6 object-cover"
+                    className="h-4 w-6 shrink-0 object-cover"
                   />
-                  {m.homeTeam.nome}
+                  <span className="truncate">{m.homeTeam.nome}</span>
                 </span>
                 <input
                   name="palpiteHome"
@@ -127,6 +140,7 @@ export default async function PalpitesPage({
                   min={0}
                   defaultValue={pred?.palpiteHome ?? ""}
                   disabled={locked}
+                  aria-label={`Placar de ${m.homeTeam.nome}`}
                   className="w-14 rounded-md border border-borda px-2 py-1 text-center"
                 />
                 <span>x</span>
@@ -136,44 +150,45 @@ export default async function PalpitesPage({
                   min={0}
                   defaultValue={pred?.palpiteAway ?? ""}
                   disabled={locked}
+                  aria-label={`Placar de ${m.awayTeam.nome}`}
                   className="w-14 rounded-md border border-borda px-2 py-1 text-center"
                 />
-                <span className="flex items-center gap-2 font-semibold">
-                  {m.awayTeam.nome}
+                <span className="flex min-w-0 items-center gap-2 font-semibold">
+                  <span className="truncate">{m.awayTeam.nome}</span>
                   <Flag
                     codigoPais={m.awayTeam.codigoPais}
                     bandeira={m.awayTeam.bandeira}
-                    className="h-4 w-6 object-cover"
+                    className="h-4 w-6 shrink-0 object-cover"
                   />
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
-                  <span className={pred ? "text-verde-acao" : "text-[#888888]"}>
+                  <span
+                    className={pred ? "text-verde-texto" : "text-texto-mudo"}
+                  >
                     {pred ? "feito" : "pendente"}
                   </span>
                   {m.homeTeam.grupo ? (
-                    <span className="rounded bg-fundo-secao px-2 py-0.5 text-xs text-[#666666]">
+                    <span className="rounded bg-fundo-secao px-2 py-0.5 text-xs text-texto-mudo">
                       Grupo {m.homeTeam.grupo}
                     </span>
                   ) : null}
                 </span>
                 {locked ? (
-                  <span className="text-[#888888]">travado</span>
+                  <span className="text-texto-mudo">travado</span>
                 ) : (
-                  <Button type="submit" className="px-3 py-1">
-                    Salvar
-                  </Button>
+                  <Button type="submit">Salvar</Button>
                 )}
               </div>
 
               {locked ? (
-                <section className="mt-1 flex flex-col gap-1 border-t border-[#EEEEEE] pt-2 text-sm">
-                  <h3 className="font-semibold text-[#444444]">
+                <section className="mt-1 flex flex-col gap-1 border-t border-fundo-secao pt-2 text-sm">
+                  <h2 className="font-semibold text-texto-suave">
                     Palpites dos participantes
-                  </h3>
+                  </h2>
                   {revealed.length === 0 ? (
-                    <p className="text-[#888888]">
+                    <p className="text-texto-mudo">
                       Ninguém palpitou neste jogo.
                     </p>
                   ) : (
@@ -183,7 +198,7 @@ export default async function PalpitesPage({
                           key={r.membershipId}
                           className="flex items-center justify-between"
                         >
-                          <span className="text-[#444444]">
+                          <span className="text-texto-suave">
                             {r.nome}
                             {r.membershipId === membership.id ? " (você)" : ""}
                           </span>

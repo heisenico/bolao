@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { EntryClosedError, joinPool, getMembership } from "@/server/pools";
 import { formatCentsBRL } from "@/lib/money";
 import { Button } from "@/components/Button";
+import { AppNav } from "@/components/AppNav";
 import { markPaidAction } from "./actions";
 
 export default async function JoinPoolPage({
@@ -17,6 +18,7 @@ export default async function JoinPoolPage({
   if (!pool) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
+        <AppNav />
         <h1 className="text-2xl font-bold">Convite inválido</h1>
         <p>Não encontramos um bolão com este código.</p>
       </main>
@@ -32,8 +34,12 @@ export default async function JoinPoolPage({
     if (err instanceof EntryClosedError) {
       return (
         <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
+          <AppNav />
           <h1 className="text-2xl font-bold">{pool.nome}</h1>
-          <p className="rounded-md bg-fundo-secao p-3 text-sm text-[#B00020]">
+          <p
+            role="alert"
+            className="rounded-md bg-fundo-secao p-3 text-sm text-perigo"
+          >
             As inscrições deste bolão já encerraram (1h antes do primeiro jogo).
           </p>
         </main>
@@ -45,6 +51,7 @@ export default async function JoinPoolPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
+      <AppNav />
       <h1 className="text-2xl font-bold">{pool.nome}</h1>
 
       <section className="flex flex-col gap-2 rounded-md border border-borda bg-fundo-suave p-4">
@@ -55,7 +62,7 @@ export default async function JoinPoolPage({
         <p>
           Chave PIX: <strong className="break-all">{pool.chavePix}</strong>
         </p>
-        <ol className="list-decimal pl-5 text-sm text-[#444444]">
+        <ol className="list-decimal pl-5 text-sm text-texto-suave">
           <li>Abra o app do seu banco e faça o PIX para a chave acima.</li>
           <li>Confira o valor de entrada.</li>
           <li>
@@ -77,13 +84,13 @@ export default async function JoinPoolPage({
             <Button type="submit">Já paguei</Button>
           </form>
         ) : (
-          <p className="text-sm text-verde-acao">
+          <p className="text-sm text-verde-texto">
             Pagamento registrado. Aguarde a confirmação do organizador.
           </p>
         )}
       </section>
 
-      <a href="/palpites" className="text-verde-acao underline">
+      <a href="/palpites" className="text-verde-texto underline">
         Ir para os palpites
       </a>
     </main>

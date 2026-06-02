@@ -1,17 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --color-verde-acao: #06AA48;
+  /* Brand accent */
+  --color-verde-acao: #06AA48; /* fills, >=18px/bold text, leader tint */
+  --color-verde-texto: #057A33; /* link/body-size text on white: ~5.5:1 (AA) */
+
+  /* Surfaces */
   --color-fundo: #FFFFFF;
   --color-fundo-suave: #FAFAFA;
   --color-fundo-secao: #F3F3F3;
   --color-borda: #CCCCCC;
+
+  /* Text ramp (all AA on white) */
+  --color-texto: #111111; /* primary ~18.9:1 */
+  --color-texto-suave: #555555; /* secondary ~7.5:1 */
+  --color-texto-mudo: #666666; /* muted/status floor ~5.7:1 */
+
+  /* Destructive/error */
+  --color-perigo: #B00020; /* ~7.3:1 on white */
 
   --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   background-color: var(--color-fundo);
-  color: #111111;
+  color: var(--color-texto);
   font-family: var(--font-sans);
+}
+
+/* Visible keyboard focus on every interactive element (PRODUCT.md: WCAG 2.2 AA, SC 2.4.7).
+   Buttons opt out (focus-visible:outline-none) and draw their own ring instead. */
+:focus-visible {
+  outline: 2px solid var(--color-verde-acao);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Placeholder must meet AA (>=4.5:1); the browser default often does not. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-texto-mudo);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

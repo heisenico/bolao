@@ -1,3 +1,4 @@
+import type { MatchStatus, PaymentStatus } from "@prisma/client";
 import { requireSession } from "@/lib/session";
 import { getAdminPool, OwnershipError } from "@/server/admin";
 import { prizeSummary } from "@/server/payments";
@@ -6,6 +7,8 @@ import { env } from "@/lib/env";
 import { inviteUrl, whatsappShareUrl } from "@/domain/share";
 import { formatCentsBRL } from "@/lib/money";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { Button } from "@/components/Button";
+import { AppNav } from "@/components/AppNav";
 import {
   applyResultAction,
   cancelMatchAction,
@@ -15,6 +18,23 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+// Readable pt-BR labels for the raw enum values so the UI never shows the
+// underscore form (e.g. "ao_vivo"). Keyed by the Prisma enum, so adding a new
+// status is a compile error here.
+const MATCH_STATUS_LABEL: Record<MatchStatus, string> = {
+  agendada: "agendada",
+  ao_vivo: "ao vivo",
+  encerrada: "encerrada",
+  adiada: "adiada",
+  cancelada: "cancelada",
+};
+
+const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  pendente: "pendente",
+  pago: "pago",
+  confirmado: "confirmado",
+};
 
 function formatSaoPaulo(d: Date): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -33,7 +53,7 @@ function matchOptionLabel(m: AdminMatch): string {
     m.placarHome != null && m.placarAway != null
       ? ` (${m.placarHome}×${m.placarAway})`
       : "";
-  return `${formatSaoPaulo(m.dataHora)} — ${m.homeNome} vs ${m.awayNome} — ${m.status}${score}`;
+  return `${formatSaoPaulo(m.dataHora)} — ${m.homeNome} vs ${m.awayNome} — ${MATCH_STATUS_LABEL[m.status]}${score}`;
 }
 
 export default async function AdminPage({
@@ -54,12 +74,13 @@ export default async function AdminPage({
     if (err instanceof OwnershipError) {
       return (
         <main className="mx-auto max-w-md px-4 py-10">
-          <div className="rounded-lg border border-[#CCCCCC] bg-[#FAFAFA] p-6 text-center">
-            <h1 className="text-xl font-bold text-[#333333]">Não autorizado</h1>
-            <p className="mt-2 text-sm text-[#666666]">
+          <AppNav />
+          <div className="rounded-lg border border-borda bg-fundo-suave p-6 text-center">
+            <h1 className="text-2xl font-bold">Não autorizado</h1>
+            <p className="mt-2 text-sm text-texto-mudo">
               Apenas o organizador do bolão pode acessar a administração.
             </p>
-            <a href="/dashboard" className="mt-4 inline-block text-sm font-semibold text-verde-acao underline">
+            <a href="/dashboard" className="mt-4 inline-block text-sm font-semibold text-verde-texto underline">
               Voltar ao início
             </a>
           </div>
@@ -75,39 +96,45 @@ export default async function AdminPage({
   // keeps using getKnockoutMatches.
   const matches = await getMatchesForAdmin();
 
+  // Shared <option> list: the result form and the cancel form both pick from
+  // the same set of matches, so build the elements once and reuse them.
+  const matchOptions = matches.map((m) => (
+    <option key={m.id} value={m.id}>
+      {matchOptionLabel(m)}
+    </option>
+  ));
+
   const join = inviteUrl(env.authUrl(), pool.inviteCode);
   const whatsapp = whatsappShareUrl(`Entra no bolão ${pool.nome}!`, join);
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-6">
+      <AppNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-[#333333]">Admin — {pool.nome}</h1>
+        <h1 className="text-2xl font-bold">Admin — {pool.nome}</h1>
         {/* Owner-only fixtures sync (CONTRACT §11.6) */}
         <form action={syncFixturesAction}>
           <input type="hidden" name="poolId" value={poolId} />
-          <button
-            type="submit"
-            className="rounded-md border border-[#CCCCCC] bg-white px-3 py-2 text-sm font-semibold text-[#333333]"
-          >
+          <Button variant="secondary" type="submit">
             Sincronizar jogos
-          </button>
+          </Button>
         </form>
       </div>
 
       {/* Prize summary (winner-takes-all, CONTRACT §4) */}
-      <section className="rounded-lg border border-[#CCCCCC] bg-[#FAFAFA] p-4">
-        <h2 className="text-lg font-bold text-[#333333]">Prêmio</h2>
+      <section className="rounded-lg border border-borda bg-fundo-suave p-4">
+        <h2 className="text-lg font-bold">Prêmio</h2>
         <p className="mt-1 text-2xl font-bold text-verde-acao">{formatCentsBRL(summary.total)}</p>
-        <p className="text-sm text-[#666666]">
+        <p className="text-sm text-texto-mudo">
           Ganhador atual: {summary.winner ? summary.winner.nome : "—"}
         </p>
       </section>
 
       {/* Manual result form (CONTRACT §11.1) */}
-      <section className="rounded-lg border border-[#CCCCCC] p-4">
-        <h2 className="text-lg font-bold text-[#333333]">Registrar/corrigir resultado</h2>
+      <section className="rounded-lg border border-borda p-4">
+        <h2 className="text-lg font-bold">Registrar/corrigir resultado</h2>
         {matches.length === 0 ? (
-          <p className="mt-2 text-sm text-[#999999]">
+          <p className="mt-2 text-sm text-texto-mudo">
             Nenhum jogo disponível ainda. Sincronize os jogos.
           </p>
         ) : (
@@ -115,12 +142,8 @@ export default async function AdminPage({
             <input type="hidden" name="poolId" value={poolId} />
             <label className="flex flex-col text-sm">
               Jogo
-              <select name="matchId" className="rounded-md border border-[#CCCCCC] p-2" required>
-                {matches.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {matchOptionLabel(m)}
-                  </option>
-                ))}
+              <select name="matchId" className="rounded-md border border-borda p-2" required>
+                {matchOptions}
               </select>
             </label>
             <label className="flex flex-col text-sm">
@@ -130,7 +153,7 @@ export default async function AdminPage({
                 name="placarHome"
                 min={0}
                 required
-                className="w-16 rounded-md border border-[#CCCCCC] p-2"
+                className="w-16 rounded-md border border-borda p-2"
               />
             </label>
             <label className="flex flex-col text-sm">
@@ -140,80 +163,63 @@ export default async function AdminPage({
                 name="placarAway"
                 min={0}
                 required
-                className="w-16 rounded-md border border-[#CCCCCC] p-2"
+                className="w-16 rounded-md border border-borda p-2"
               />
             </label>
-            <button type="submit" className="rounded-md bg-verde-acao px-4 py-2 font-semibold text-white">
-              Salvar resultado
-            </button>
+            <Button type="submit">Salvar resultado</Button>
           </form>
         )}
-        <p className="mt-2 text-xs text-[#999999]">
+        <p className="mt-2 text-xs text-texto-mudo">
           W.O.: registre o 3×0 oficial aqui como resultado manual normal (CONTRACT §11.8).
         </p>
       </section>
 
       {/* Cancel a match (status cancelada, void points — CONTRACT §11.8) */}
-      <section className="rounded-lg border border-[#CCCCCC] p-4">
-        <h2 className="text-lg font-bold text-[#333333]">Cancelar jogo</h2>
+      <section className="rounded-lg border border-borda p-4">
+        <h2 className="text-lg font-bold">Cancelar jogo</h2>
         {matches.length === 0 ? (
-          <p className="mt-2 text-sm text-[#999999]">Nenhum jogo disponível ainda.</p>
+          <p className="mt-2 text-sm text-texto-mudo">Nenhum jogo disponível ainda.</p>
         ) : (
           <form action={cancelMatchAction} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="poolId" value={poolId} />
             <label className="flex flex-col text-sm">
               Jogo
-              <select name="matchId" className="rounded-md border border-[#CCCCCC] p-2" required>
-                {matches.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {matchOptionLabel(m)}
-                  </option>
-                ))}
+              <select name="matchId" className="rounded-md border border-borda p-2" required>
+                {matchOptions}
               </select>
             </label>
-            <button
-              type="submit"
-              className="rounded-md border border-[#CC0000] px-4 py-2 font-semibold text-[#CC0000]"
-            >
+            <Button variant="danger" type="submit">
               Cancelar jogo
-            </button>
+            </Button>
           </form>
         )}
       </section>
 
       {/* Members + payments (CONTRACT §7) */}
-      <section className="rounded-lg border border-[#CCCCCC] p-4">
-        <h2 className="text-lg font-bold text-[#333333]">Participantes</h2>
-        <ul className="mt-3 divide-y divide-[#EEEEEE]">
+      <section className="rounded-lg border border-borda p-4">
+        <h2 className="text-lg font-bold">Participantes</h2>
+        <ul className="mt-3 divide-y divide-fundo-secao">
           {pool.memberships.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span className="text-sm">
                 {m.user.name ?? m.user.email}
-                <span className="ml-2 text-xs text-[#999999]">[{m.paymentStatus}]</span>
+                <span className="ml-2 text-xs text-texto-mudo">[{PAYMENT_STATUS_LABEL[m.paymentStatus]}]</span>
               </span>
               <span className="flex gap-2">
                 {m.paymentStatus !== "confirmado" && (
                   <form action={confirmPaymentAction}>
                     <input type="hidden" name="poolId" value={poolId} />
                     <input type="hidden" name="membershipId" value={m.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-verde-acao px-3 py-1 text-sm font-semibold text-white"
-                    >
-                      Confirmar pagamento
-                    </button>
+                    <Button type="submit">Confirmar pagamento</Button>
                   </form>
                 )}
                 {m.userId !== pool.ownerId && (
                   <form action={removeMemberAction}>
                     <input type="hidden" name="poolId" value={poolId} />
                     <input type="hidden" name="membershipId" value={m.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md border border-[#CCCCCC] px-3 py-1 text-sm text-[#CC0000]"
-                    >
+                    <Button variant="danger" type="submit">
                       Remover
-                    </button>
+                    </Button>
                   </form>
                 )}
               </span>
@@ -223,16 +229,16 @@ export default async function AdminPage({
       </section>
 
       {/* Invite / share (CONTRACT §8 admin invite section) */}
-      <section className="rounded-lg border border-[#CCCCCC] p-4">
-        <h2 className="text-lg font-bold text-[#333333]">Convidar</h2>
-        <p className="mt-2 break-all text-sm text-[#666666]">{join}</p>
+      <section className="rounded-lg border border-borda p-4">
+        <h2 className="text-lg font-bold">Convidar</h2>
+        <p className="mt-2 break-all text-sm text-texto-mudo">{join}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <CopyLinkButton url={join} />
           <a
             href={whatsapp}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md bg-[#25D366] px-3 py-2 text-sm font-semibold text-white"
+            className="rounded-md bg-[#25D366] px-3 py-2 text-sm font-semibold text-texto"
           >
             Compartilhar no WhatsApp
           </a>

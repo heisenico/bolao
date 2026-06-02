@@ -5,6 +5,7 @@ import { LOCK_LEAD_MS, isMatchLocked } from "@/domain/deadline";
 import { getCurrentMembership } from "@/server/pools";
 import { Flag } from "@/components/Flag";
 import { Button } from "@/components/Button";
+import { AppNav } from "@/components/AppNav";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
 function formatSaoPaulo(d: Date): string {
@@ -29,13 +30,14 @@ export default async function DashboardPage() {
   if (!membership) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-6 py-10">
+        <AppNav />
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-[#555555]">
+        <p className="text-sm text-texto-suave">
           Você está logado como{" "}
           <span className="font-medium">{session.user?.email}</span>.
         </p>
         <p>Você ainda não entrou em um bolão.</p>
-        <a href="/pools/new" className="text-verde-acao underline">
+        <a href="/pools/new" className="text-verde-texto underline">
           Criar um bolão
         </a>
         <form action={logout}>
@@ -66,6 +68,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
+      <AppNav />
       <AutoRefresh />
       <h1 className="text-2xl font-bold">Próximos jogos</h1>
 
@@ -83,33 +86,33 @@ export default async function DashboardPage() {
                 className="flex flex-col gap-1 rounded-md border border-borda p-4"
               >
                 <div className="flex items-center justify-between font-semibold">
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <Flag
                       codigoPais={m.homeTeam.codigoPais}
                       bandeira={m.homeTeam.bandeira}
-                      className="h-4 w-6 object-cover"
+                      className="h-4 w-6 shrink-0 object-cover"
                     />
-                    {m.homeTeam.nome}
+                    <span className="min-w-0 truncate">{m.homeTeam.nome}</span>
                   </span>
                   <span>x</span>
-                  <span className="flex items-center gap-2">
-                    {m.awayTeam.nome}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 truncate">{m.awayTeam.nome}</span>
                     <Flag
                       codigoPais={m.awayTeam.codigoPais}
                       bandeira={m.awayTeam.bandeira}
-                      className="h-4 w-6 object-cover"
+                      className="h-4 w-6 shrink-0 object-cover"
                     />
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm text-[#444444]">
+                <div className="flex items-center justify-between text-sm text-texto-suave">
                   <span>Jogo: {formatSaoPaulo(m.dataHora)}</span>
                   <span>Prazo: {formatSaoPaulo(deadline)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className={done ? "text-verde-acao" : "text-[#888888]"}>
+                  <span className={done ? "text-verde-texto" : "text-texto-mudo"}>
                     {done ? "palpite feito" : "palpite pendente"}
                   </span>
-                  <span className="text-[#888888]">
+                  <span className="text-texto-mudo">
                     {locked ? "travado" : "aberto"}
                   </span>
                 </div>
@@ -119,7 +122,7 @@ export default async function DashboardPage() {
         </ul>
       )}
 
-      <a href="/palpites" className="text-verde-acao underline">
+      <a href="/palpites" className="text-verde-texto underline">
         Fazer/editar palpites
       </a>
       <form action={logout}>

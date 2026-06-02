@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/session";
 import { Button } from "@/components/Button";
+import { AppNav } from "@/components/AppNav";
 import { createPoolAction } from "./actions";
 
 export default async function NewPoolPage() {
@@ -8,6 +9,7 @@ export default async function NewPoolPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
+      <AppNav />
       <h1 className="text-2xl font-bold">Criar bolão</h1>
       <form action={createPoolAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">

@@ -18,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={openSans.variable}>
-      <body className="bg-fundo font-sans text-[#111111] antialiased">
+      <body className="bg-fundo font-sans text-texto antialiased">
         {children}
       </body>
     </html>
