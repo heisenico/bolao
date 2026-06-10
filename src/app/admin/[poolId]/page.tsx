@@ -1,15 +1,24 @@
 import type { MatchStatus, PaymentStatus } from "@prisma/client";
 import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { getAdminPool, OwnershipError } from "@/server/admin";
 import { prizeSummary } from "@/server/payments";
 import { getMatchesForAdmin, type AdminMatch } from "@/server/results";
+import { getPrizeResults } from "@/server/prizes";
 import { env } from "@/lib/env";
 import { inviteUrl, whatsappShareUrl } from "@/domain/share";
+import {
+  PRIZE_LABEL,
+  PRIZE_POINTS,
+  PRIZE_TYPES,
+  TEAM_PRIZE_TYPES,
+} from "@/domain/awards";
 import { formatCentsBRL } from "@/lib/money";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AppNav } from "@/components/AppNav";
 import {
+  applyPrizeResultAction,
   applyResultAction,
   cancelMatchAction,
   confirmPaymentAction,
@@ -95,6 +104,9 @@ export default async function AdminPage({
   // tournament's start, not just the knockout phases (SPEC §9). The Bracket
   // keeps using getKnockoutMatches.
   const matches = await getMatchesForAdmin();
+  const prizeResults = await getPrizeResults();
+  const resultByType = new Map(prizeResults.map((r) => [r.prizeType, r]));
+  const teams = await prisma.team.findMany({ orderBy: { nome: "asc" } });
 
   // Shared <option> list: the result form and the cancel form both pick from
   // the same set of matches, so build the elements once and reuse them.
@@ -121,12 +133,25 @@ export default async function AdminPage({
         </form>
       </div>
 
-      {/* Prize summary (winner-takes-all, CONTRACT §4) */}
+      {/* Prize summary: top 3 humans split 60/30/10, cascading past AIs */}
       <section className="rounded-lg border border-border bg-surface-soft p-4">
         <h2 className="text-lg font-bold">Prêmio</h2>
         <p className="mt-1 text-2xl font-bold text-accent">{formatCentsBRL(summary.total)}</p>
-        <p className="text-sm text-ink-muted break-words">
-          Ganhador atual: {summary.winner ? summary.winner.nome : "—"}
+        {summary.winners.length === 0 ? (
+          <p className="text-sm text-ink-muted">Premiados atuais: —</p>
+        ) : (
+          <ol className="mt-1 flex flex-col gap-0.5 text-sm text-ink-muted">
+            {summary.winners.map((w) => (
+              <li key={w.membershipId} className="break-words">
+                {w.humanPrizeRank}º {w.nome} — {w.prizePct}% (
+                {formatCentsBRL(Math.round((summary.total * (w.prizePct ?? 0)) / 100))})
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="mt-1 text-xs text-ink-muted">
+          Participantes IA pontuam no ranking, mas não concorrem ao prêmio. O
+          pagamento é feito por PIX, fora do app.
         </p>
       </section>
 
@@ -199,6 +224,70 @@ export default async function AdminPage({
             </SubmitButton>
           </form>
         )}
+      </section>
+
+      {/* FIFA prize settlement: admin-manual after official confirmation. The
+          result is GLOBAL (shared across pools), like match results. */}
+      <section className="rounded-lg border border-border p-4">
+        <h2 className="text-lg font-bold">Apurar prêmios da Copa</h2>
+        <p className="mt-1 text-xs text-ink-muted">
+          Registre o resultado oficial da FIFA. Todos os palpites certos ganham
+          os pontos na hora; reenviar corrige a apuração.
+        </p>
+        <ul className="mt-3 flex flex-col gap-4">
+          {PRIZE_TYPES.map((prizeType) => {
+            const confirmed = resultByType.get(prizeType);
+            return (
+              <li key={prizeType}>
+                <form
+                  action={applyPrizeResultAction}
+                  className="flex flex-wrap items-end gap-2"
+                >
+                  <input type="hidden" name="poolId" value={poolId} />
+                  <input type="hidden" name="prizeType" value={prizeType} />
+                  <label className="flex min-w-0 grow flex-col text-sm">
+                    {PRIZE_LABEL[prizeType]} ({PRIZE_POINTS[prizeType]} pts)
+                    {TEAM_PRIZE_TYPES.includes(prizeType) ? (
+                      <select
+                        name="value"
+                        required
+                        defaultValue={confirmed?.value ?? ""}
+                        className="rounded-md border border-border p-2"
+                      >
+                        <option value="" disabled>
+                          Escolha a seleção
+                        </option>
+                        {teams.map((t) => (
+                          <option key={t.id} value={t.nome}>
+                            {t.nome}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        name="value"
+                        required
+                        maxLength={80}
+                        defaultValue={confirmed?.value ?? ""}
+                        placeholder="Nome do jogador"
+                        className="rounded-md border border-border p-2"
+                      />
+                    )}
+                  </label>
+                  <SubmitButton pendingLabel="Apurando...">
+                    {confirmed ? "Corrigir" : "Confirmar"}
+                  </SubmitButton>
+                </form>
+                <p className="mt-1 text-xs text-ink-muted">
+                  {confirmed
+                    ? `Apurado: ${confirmed.value}`
+                    : "Aguardando apuração."}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       {/* Members + payments (CONTRACT §7) */}

@@ -4,9 +4,9 @@ import {
   type FootballDataClient,
   type FdMatch,
 } from '@/lib/footballData'
-import { scorePrediction, type Score } from '@/domain/scoring'
+import { AUTO_PALPITE, settlePrediction, type Score } from '@/domain/scoring'
 import { KNOCKOUT_PHASES, type BracketMatch } from '@/domain/bracket'
-import type { MatchPhase, MatchStatus } from '@prisma/client'
+import type { MatchPhase, MatchStatus, Prisma } from '@prisma/client'
 
 /** Builds the default football-data.org client from env (server-only). */
 export function defaultClient(): FootballDataClient {
@@ -190,6 +190,59 @@ export async function syncFixtures(
   return { teams: fdTeams.length, matches: matchCount }
 }
 
+/**
+ * Scores every prediction of a settled match inside the caller's transaction.
+ * Official rules:
+ *   - 0x0 fallback: a member with no pick gets an automatic 0x0 prediction
+ *     (palpiteAutomatico), created here so it is auditable like any other pick.
+ *     Memberships span ALL pools — matches are global rows shared across pools.
+ *   - Each prediction gets hitType + pontosBase (pre-multiplier) + pontosObtidos
+ *     (post phase-multiplier, the value the ranking sums).
+ * Recomputing is idempotent: same score + fase always writes the same values.
+ */
+async function settlePredictionsTx(
+  tx: Prisma.TransactionClient,
+  match: { id: string; fase: MatchPhase },
+  score: Score,
+): Promise<void> {
+  const memberships = await tx.poolMembership.findMany({ select: { id: true } })
+  const predicted = await tx.prediction.findMany({
+    where: { matchId: match.id },
+    select: { membershipId: true },
+  })
+  const hasPick = new Set(predicted.map((p) => p.membershipId))
+  const missing = memberships.filter((m) => !hasPick.has(m.id))
+  if (missing.length > 0) {
+    await tx.prediction.createMany({
+      data: missing.map((m) => ({
+        membershipId: m.id,
+        matchId: match.id,
+        palpiteHome: AUTO_PALPITE.home,
+        palpiteAway: AUTO_PALPITE.away,
+        palpiteAutomatico: true,
+      })),
+      skipDuplicates: true,
+    })
+  }
+
+  const predictions = await tx.prediction.findMany({ where: { matchId: match.id } })
+  for (const p of predictions) {
+    const settled = settlePrediction(
+      { home: p.palpiteHome, away: p.palpiteAway },
+      score,
+      match.fase,
+    )
+    await tx.prediction.update({
+      where: { id: p.id },
+      data: {
+        hitType: settled.hitType,
+        pontosBase: settled.pontosBase,
+        pontosObtidos: settled.pontosObtidos,
+      },
+    })
+  }
+}
+
 /** A match window stays "open for polling" from kickoff to kickoff + this. */
 export const MATCH_WINDOW_DURATION_MS = 3 * 60 * 60 * 1000 // 3h: 90' + ET + stoppage + settle lag
 
@@ -203,9 +256,10 @@ export const MATCH_WINDOW_DURATION_MS = 3 * 60 * 60 * 1000 // 3h: 90' + ET + sto
  * dataHora within [now - window, now], apiFootballId set.
  *
  * For each candidate whose FD match is final (matched by apiFootballId): writes
- * placarHome/placarAway + status=encerrada + resultadoFonte=api, then recomputes
- * pontosObtidos for that match's predictions via scorePrediction. Idempotent:
- * settled matches are no longer agendada, so they fall out of the candidate gate.
+ * placarHome/placarAway + status=encerrada + resultadoFonte=api, then settles
+ * every prediction (hitType + pontosBase + multiplied pontosObtidos, creating
+ * the 0x0 fallbacks) via settlePredictionsTx. Idempotent: settled matches are
+ * no longer agendada, so they fall out of the candidate gate.
  */
 export async function pollAndSettle(
   opts: { now?: Date; client?: FootballDataClient } = {},
@@ -225,7 +279,7 @@ export async function pollAndSettle(
       dataHora: { lte: now, gte: windowStartFloor },
       apiFootballId: { not: null },
     },
-    select: { id: true, apiFootballId: true },
+    select: { id: true, apiFootballId: true, fase: true },
   })
 
   if (openMatches.length === 0) {
@@ -249,11 +303,11 @@ export async function pollAndSettle(
     const score = fixtureToScore(fd)
 
     // Atomic per match (CONTRACT §11.8): write the result and recompute every
-    // prediction's pontosObtidos in one transaction. A crash mid-recompute would
-    // otherwise flip the match to `encerrada` with only some predictions scored,
-    // and a re-run can't fix it (the match is no longer `agendada`, so it falls
-    // out of the candidate gate). The transaction rolls back the result write too,
-    // leaving the match `agendada` for the next poll to retry cleanly.
+    // prediction (incl. creating the 0x0 fallbacks) in one transaction. A crash
+    // mid-recompute would otherwise flip the match to `encerrada` with only some
+    // predictions scored, and a re-run can't fix it (the match is no longer
+    // `agendada`, so it falls out of the candidate gate). The transaction rolls
+    // back the result write too, leaving the match `agendada` for a clean retry.
     await prisma.$transaction(async (tx) => {
       await tx.match.update({
         where: { id: m.id },
@@ -265,14 +319,7 @@ export async function pollAndSettle(
         },
       })
 
-      const predictions = await tx.prediction.findMany({ where: { matchId: m.id } })
-      for (const p of predictions) {
-        const pontos = scorePrediction({ home: p.palpiteHome, away: p.palpiteAway }, score)
-        await tx.prediction.update({
-          where: { id: p.id },
-          data: { pontosObtidos: pontos },
-        })
-      }
+      await settlePredictionsTx(tx, m, score)
     })
 
     settledMatchIds.push(m.id)
@@ -312,7 +359,7 @@ export async function applyManualResult(
   assertValidScore(placarAway, 'placarAway')
 
   await prisma.$transaction(async (tx) => {
-    await tx.match.update({
+    const match = await tx.match.update({
       where: { id: matchId },
       data: {
         placarHome,
@@ -320,25 +367,49 @@ export async function applyManualResult(
         status: 'encerrada',
         resultadoFonte: 'manual',
       },
+      select: { id: true, fase: true },
     })
 
-    const predictions = await tx.prediction.findMany({ where: { matchId } })
-    for (const p of predictions) {
-      const pontos = scorePrediction(
-        { home: p.palpiteHome, away: p.palpiteAway },
-        { home: placarHome, away: placarAway },
-      )
-      await tx.prediction.update({
-        where: { id: p.id },
-        data: { pontosObtidos: pontos },
-      })
-    }
+    await settlePredictionsTx(tx, match, { home: placarHome, away: placarAway })
   })
 }
 
 /**
+ * Idempotent rescore safety net (spec Phase 1 backfill): re-runs the current
+ * classifier + phase multipliers over every already-settled match (encerrada
+ * with both placar values), in one transaction per match. With nothing settled
+ * it is a no-op; running it twice yields identical pontosObtidos. Manual
+ * results are rescored from their stored placar — the source stays manual and
+ * the result itself is never altered.
+ */
+export async function rescoreSettledMatches(): Promise<{ rescoredMatchIds: string[] }> {
+  const settled = await prisma.match.findMany({
+    where: {
+      status: 'encerrada',
+      placarHome: { not: null },
+      placarAway: { not: null },
+    },
+    select: { id: true, fase: true, placarHome: true, placarAway: true },
+  })
+
+  const rescoredMatchIds: string[] = []
+  for (const m of settled) {
+    await prisma.$transaction(async (tx) => {
+      await settlePredictionsTx(tx, m, {
+        home: m.placarHome as number,
+        away: m.placarAway as number,
+      })
+    })
+    rescoredMatchIds.push(m.id)
+  }
+
+  return { rescoredMatchIds }
+}
+
+/**
  * Admin cancels a match (CONTRACT §4 / §11.8): set status=cancelada and void
- * every prediction's points (pontosObtidos=0). Both writes run in one
+ * every prediction (pontosObtidos=0, pontosBase=null, hitType='cancelled' so
+ * the tiebreaker counters can never count it). Both writes run in one
  * transaction. computeStandings sums pontosObtidos, so the now-zeroed
  * predictions drop the cancelled match out of the ranking with no further
  * change. The poller settles only status=agendada, so it never resurrects a
@@ -352,7 +423,7 @@ export async function cancelMatch(matchId: string): Promise<void> {
     }),
     prisma.prediction.updateMany({
       where: { matchId },
-      data: { pontosObtidos: 0 },
+      data: { pontosObtidos: 0, pontosBase: null, hitType: 'cancelled' },
     }),
   ])
 }

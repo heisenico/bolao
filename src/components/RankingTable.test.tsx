@@ -14,6 +14,8 @@ const rows: RankingRow[] = [
     pontos: 7,
     cravadas: 2,
     acertosVencedor: 1,
+    acertouCampeao: false,
+    isAi: false,
     joinedAt: new Date("2026-05-01T00:00:00.000Z"),
     image: "https://img/alice.png",
   },
@@ -23,6 +25,8 @@ const rows: RankingRow[] = [
     pontos: 3,
     cravadas: 0,
     acertosVencedor: 3,
+    acertouCampeao: false,
+    isAi: false,
     joinedAt: new Date("2026-05-02T00:00:00.000Z"),
     image: null,
   },
@@ -80,6 +84,19 @@ describe("RankingTable", () => {
     expect(leader!.textContent).toContain("Alice");
     // Only the first row is the leader.
     expect(container.querySelectorAll('[data-leader="true"]')).toHaveLength(1);
+  });
+
+  it("badges AI participants with the IA tag (and never humans)", () => {
+    const withAi: RankingRow[] = [
+      { ...rows[0], membershipId: "ai", nome: "Claude", isAi: true },
+      ...rows,
+    ];
+    const { container } = render(<RankingTable rows={withAi} />);
+    const badges = container.querySelectorAll('[data-badge="ia"]');
+    expect(badges).toHaveLength(1);
+    const aiRow = bodyRows(container)[0];
+    expect(within(aiRow).getByText("Claude")).toBeInTheDocument();
+    expect(within(aiRow).getByText(/IA/)).toBeInTheDocument();
   });
 
   it("renders an empty state when there are no rows", () => {

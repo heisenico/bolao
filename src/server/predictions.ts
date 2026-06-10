@@ -1,6 +1,7 @@
 import { type Prediction } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isMatchLocked, isPredictionOpen } from '@/domain/deadline'
+import { getDeadlineContext } from '@/server/deadlines'
 
 export class PredictionLockedError extends Error {
   constructor(matchId: string) {
@@ -17,8 +18,12 @@ function assertValidScore(value: number, field: 'palpiteHome' | 'palpiteAway'): 
 }
 
 /**
- * Create or update the caller's prediction for a match.
- * Rejected (PredictionLockedError) once now >= kickoff - 1h. Deadline enforced in UTC.
+ * Create or update the caller's prediction for a match. Deadlines enforced in
+ * UTC, per the official blocks (PredictionLockedError when outside the window):
+ *   group match — until 1h before the OPENING match (Block A close);
+ *   knockout match — from 20/06 00:00 BRT until 1h before its own kickoff.
+ * A draw (home === away) is a valid prediction in EVERY phase, knockout included
+ * (penalties never count, so knockout matches can end level).
  */
 export async function upsertPrediction(args: {
   membershipId: string
@@ -35,7 +40,8 @@ export async function upsertPrediction(args: {
   if (!match) {
     throw new Error(`Match not found: ${args.matchId}`)
   }
-  if (!isPredictionOpen(match.dataHora, now)) {
+  const { openingKickoffUtc } = await getDeadlineContext()
+  if (!isPredictionOpen(match.fase, match.dataHora, openingKickoffUtc, now)) {
     throw new PredictionLockedError(args.matchId)
   }
   return prisma.prediction.upsert({
@@ -54,6 +60,9 @@ export async function upsertPrediction(args: {
     update: {
       palpiteHome: args.palpiteHome,
       palpiteAway: args.palpiteAway,
+      // An edit is always a human act: a row seeded as an automatic 0x0 can
+      // only exist after settlement, and settled matches are locked above.
+      palpiteAutomatico: false,
     },
   })
 }
@@ -91,8 +100,10 @@ export async function hasPredictedEntirePhase(
 
 /**
  * Predictions for a match the viewer is allowed to see.
- * While the match is open, only the viewer's own prediction is returned (anti-copy).
- * Once locked (now >= kickoff - 1h), all members' predictions are returned.
+ * While the match can still be edited (or, for a knockout match, before its
+ * window even opens), only the viewer's own prediction is returned (anti-copy).
+ * Once locked — Block A close for group matches, kickoff - 1h for knockout —
+ * all members' predictions are returned.
  */
 export async function getVisiblePredictions(
   matchId: string,
@@ -103,7 +114,8 @@ export async function getVisiblePredictions(
   if (!match) {
     throw new Error(`Match not found: ${matchId}`)
   }
-  if (isMatchLocked(match.dataHora, now)) {
+  const { openingKickoffUtc } = await getDeadlineContext()
+  if (isMatchLocked(match.fase, match.dataHora, openingKickoffUtc, now)) {
     return prisma.prediction.findMany({ where: { matchId } })
   }
   return prisma.prediction.findMany({

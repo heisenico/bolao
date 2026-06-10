@@ -16,6 +16,9 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  // AI participants (Claude, ChatGPT...) predict and rank normally but never
+  // take prize money; the prize cascade skips them.
+  isAi          Boolean   @default(false)
   accounts      Account[]
   sessions      Session[]
   memberships   PoolMembership[]
@@ -92,6 +95,27 @@ enum ResultadoFonte {
   manual
 }
 
+// Explicit hit level per settled prediction. The ranking tiebreakers count by
+// THIS, never by point literals (point values vary by phase multiplier).
+enum HitType {
+  exact
+  winner_and_diff
+  winner_only
+  miss
+  pending
+  cancelled
+}
+
+// FIFA prize predictions (champion..golden_ball lock with Block A; runner_up
+// belongs to Block B). Settled manually by the admin after FIFA confirms.
+enum PrizeType {
+  champion
+  top_scorer
+  best_goalkeeper
+  golden_ball
+  runner_up
+}
+
 model Pool {
   id           String           @id @default(cuid())
   nome         String
@@ -114,6 +138,7 @@ model PoolMembership {
   joinedAt      DateTime      @default(now())   // tiebreaker
   paymentStatus PaymentStatus @default(pendente)
   predictions   Prediction[]
+  prizePredictions PrizePrediction[]
   payments      PaymentRecord[]
 
   @@unique([poolId, userId])
@@ -154,11 +179,46 @@ model Prediction {
   match        Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
   palpiteHome  Int
   palpiteAway  Int
+  // Created automatically at settlement as the official 0x0 fallback for a
+  // member with no pick (never user-entered).
+  palpiteAutomatico Boolean   @default(false)
+  // pontosObtidos is the FINAL value the ranking sums (post phase-multiplier);
+  // pontosBase is the pre-multiplier value, kept for audit.
   pontosObtidos Int           @default(0)
+  pontosBase   Int?
+  hitType      HitType        @default(pending)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@unique([membershipId, matchId])
+}
+
+// One FIFA prize pick per member per prize type. membership encodes pool+user
+// (@@unique([poolId, userId]) upstream), so this is the spec's (pool, user,
+// prizeType) uniqueness. pointsAwarded: null until the admin settles the prize
+// ("aguardando apuração"), then the awarded value (0 for a wrong pick).
+model PrizePrediction {
+  id           String         @id @default(cuid())
+  membershipId String
+  membership   PoolMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  prizeType    PrizeType
+  value        String
+  pointsAwarded Int?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([membershipId, prizeType])
+}
+
+// The official FIFA outcome per prize type — a global fact (one row per prize),
+// entered manually by an organizer after FIFA confirms. pointsValue is stamped
+// at settlement so a later rule change can never silently rescore history.
+model PrizeResult {
+  id          String    @id @default(cuid())
+  prizeType   PrizeType @unique
+  value       String
+  pointsValue Int
+  confirmedAt DateTime  @default(now())
 }
 
 model PaymentRecord {

@@ -62,7 +62,7 @@ function clientReturning(finished: FdMatch[]): FootballDataClient {
 }
 
 describe('applyManualResult', () => {
-  it('writes score, marks encerrada + manual, and scores the prediction (exact = 3)', async () => {
+  it('writes score, marks encerrada + manual, and scores the prediction (final exact = 30)', async () => {
     const { member, match } = await baseFixture()
     await prisma.prediction.create({
       data: { membershipId: member.id, matchId: match.id, palpiteHome: 2, palpiteAway: 1 },
@@ -76,19 +76,20 @@ describe('applyManualResult', () => {
     expect(after.status).toBe('encerrada')
     expect(after.resultadoFonte).toBe('manual')
 
+    // fase 'final' => multiplier 3x: exact 10 base, 30 final (spec example).
     const pred = await prisma.prediction.findFirstOrThrow({ where: { matchId: match.id } })
-    expect(pred.pontosObtidos).toBe(3)
+    expect(pred).toMatchObject({ hitType: 'exact', pontosBase: 10, pontosObtidos: 30 })
   })
 
-  it('scores winner-only (1) and wrong (0) for the same manual result', async () => {
+  it('scores winner-only (9 on the final) and miss (0) for the same manual result', async () => {
     const { member, pool, match } = await baseFixture()
     const u2 = await makeUser(`u2-${Date.now()}-${Math.random()}@test.com`)
     const m2 = await prisma.poolMembership.create({ data: { poolId: pool.id, userId: u2.id } })
-    // member: predicts 3x0 -> right winner, wrong score -> 1
+    // member: predicts 3x0 -> right winner, wrong diff -> winner_only (3 base, x3 = 9)
     await prisma.prediction.create({
       data: { membershipId: member.id, matchId: match.id, palpiteHome: 3, palpiteAway: 0 },
     })
-    // m2: predicts 0x2 -> wrong winner -> 0
+    // m2: predicts 0x2 -> wrong winner -> miss
     await prisma.prediction.create({
       data: { membershipId: m2.id, matchId: match.id, palpiteHome: 0, palpiteAway: 2 },
     })
@@ -97,8 +98,8 @@ describe('applyManualResult', () => {
 
     const p1 = await prisma.prediction.findFirstOrThrow({ where: { membershipId: member.id } })
     const p2 = await prisma.prediction.findFirstOrThrow({ where: { membershipId: m2.id } })
-    expect(p1.pontosObtidos).toBe(1)
-    expect(p2.pontosObtidos).toBe(0)
+    expect(p1).toMatchObject({ hitType: 'winner_only', pontosBase: 3, pontosObtidos: 9 })
+    expect(p2).toMatchObject({ hitType: 'miss', pontosBase: 0, pontosObtidos: 0 })
   })
 
   it('rejects non-integer or negative scores', async () => {
@@ -122,7 +123,7 @@ describe('applyManualResult', () => {
     expect(after.placarAway).toBe(0)
     expect(after.resultadoFonte).toBe('manual')
     const pred = await prisma.prediction.findFirstOrThrow({ where: { matchId: match.id } })
-    expect(pred.pontosObtidos).toBe(3)
+    expect(pred).toMatchObject({ hitType: 'exact', pontosBase: 10, pontosObtidos: 30 })
   })
 
   it('is NOT overwritten by the poller even when a FINISHED fixture has a different score', async () => {
@@ -153,8 +154,9 @@ describe('applyManualResult', () => {
     expect(after.placarAway).toBe(0)
     expect(after.status).toBe('encerrada')
 
-    // The exact manual prediction (1x0) kept its 3 points, not re-scored against 4x0.
+    // The exact manual prediction (1x0) kept its 30 points (final exact),
+    // not re-scored against 4x0.
     const pred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: member.id } })
-    expect(pred.pontosObtidos).toBe(3)
+    expect(pred).toMatchObject({ hitType: 'exact', pontosBase: 10, pontosObtidos: 30 })
   })
 })

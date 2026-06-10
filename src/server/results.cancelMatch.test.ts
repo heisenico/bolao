@@ -60,7 +60,7 @@ function clientReturning(finished: FdMatch[]): FootballDataClient {
 }
 
 describe('cancelMatch', () => {
-  it('marks the match cancelada and zeroes all its predictions', async () => {
+  it('marks the match cancelada and voids all its predictions (hitType cancelled)', async () => {
     const { member, match } = await fixture()
     await prisma.prediction.create({
       data: {
@@ -68,7 +68,9 @@ describe('cancelMatch', () => {
         matchId: match.id,
         palpiteHome: 2,
         palpiteAway: 1,
-        pontosObtidos: 3,
+        pontosObtidos: 10,
+        pontosBase: 10,
+        hitType: 'exact',
       },
     })
 
@@ -78,7 +80,7 @@ describe('cancelMatch', () => {
     expect(after.status).toBe('cancelada')
 
     const pred = await prisma.prediction.findFirstOrThrow({ where: { matchId: match.id } })
-    expect(pred.pontosObtidos).toBe(0)
+    expect(pred).toMatchObject({ pontosObtidos: 0, pontosBase: null, hitType: 'cancelled' })
   })
 
   it('is skipped by the poller (cancelada is never settled or resurrected)', async () => {
@@ -101,7 +103,7 @@ describe('cancelMatch', () => {
 
   it('drops the cancelled match contribution from standings', async () => {
     const { member, pool, home, away } = await fixture()
-    // Two finished matches; the member nails both (3 + 3 = 6 points).
+    // Two finished group matches; the member nails both (10 + 10 = 20 points).
     const m1 = await prisma.match.create({
       data: {
         fase: 'grupos',
@@ -127,18 +129,40 @@ describe('cancelMatch', () => {
       },
     })
     await prisma.prediction.create({
-      data: { membershipId: member.id, matchId: m1.id, palpiteHome: 1, palpiteAway: 0, pontosObtidos: 3 },
+      data: {
+        membershipId: member.id,
+        matchId: m1.id,
+        palpiteHome: 1,
+        palpiteAway: 0,
+        pontosObtidos: 10,
+        pontosBase: 10,
+        hitType: 'exact',
+      },
     })
     await prisma.prediction.create({
-      data: { membershipId: member.id, matchId: m2.id, palpiteHome: 2, palpiteAway: 2, pontosObtidos: 3 },
+      data: {
+        membershipId: member.id,
+        matchId: m2.id,
+        palpiteHome: 2,
+        palpiteAway: 2,
+        pontosObtidos: 10,
+        pontosBase: 10,
+        hitType: 'exact',
+      },
     })
 
     const before = await computeStandings(pool.id)
-    expect(before.find((r) => r.membershipId === member.id)?.pontos).toBe(6)
+    const beforeRow = before.find((r) => r.membershipId === member.id)
+    expect(beforeRow?.pontos).toBe(20)
+    expect(beforeRow?.cravadas).toBe(2)
 
     await cancelMatch(m2.id)
 
     const after = await computeStandings(pool.id)
-    expect(after.find((r) => r.membershipId === member.id)?.pontos).toBe(3)
+    const afterRow = after.find((r) => r.membershipId === member.id)
+    expect(afterRow?.pontos).toBe(10)
+    // The cancelled prediction also leaves every tiebreaker counter.
+    expect(afterRow?.cravadas).toBe(1)
+    expect(afterRow?.acertosVencedor).toBe(1)
   })
 })

@@ -5,12 +5,12 @@ import type { FootballDataClient, FdMatch } from '@/lib/footballData'
 
 const KICKOFF = '2026-06-11T20:00:00Z'
 
-function scheduledMatch(): FdMatch {
+function scheduledMatch(stage = 'GROUP_STAGE'): FdMatch {
   return {
     id: 1001,
     utcDate: KICKOFF,
-    stage: 'GROUP_STAGE',
-    group: 'Group A',
+    stage,
+    group: stage === 'GROUP_STAGE' ? 'Group A' : null,
     status: 'SCHEDULED',
     homeTeam: { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
     awayTeam: { id: 2, name: 'France', tla: 'FRA', crest: null },
@@ -18,23 +18,23 @@ function scheduledMatch(): FdMatch {
   }
 }
 
-function baseClient(finished: FdMatch[]): FootballDataClient {
+function baseClient(finished: FdMatch[], stage = 'GROUP_STAGE'): FootballDataClient {
   return {
     getTeams: async () => [
       { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
       { id: 2, name: 'France', tla: 'FRA', crest: null },
     ],
-    getMatches: async () => [scheduledMatch()],
+    getMatches: async () => [scheduledMatch(stage)],
     getFinishedMatches: async () => finished,
   }
 }
 
-function finishedMatch(home: number, away: number): FdMatch {
+function finishedMatch(home: number, away: number, stage = 'GROUP_STAGE'): FdMatch {
   return {
     id: 1001,
     utcDate: KICKOFF,
-    stage: 'GROUP_STAGE',
-    group: 'Group A',
+    stage,
+    group: stage === 'GROUP_STAGE' ? 'Group A' : null,
     status: 'FINISHED',
     homeTeam: { id: 6, name: 'Brazil', tla: 'BRA', crest: null },
     awayTeam: { id: 2, name: 'France', tla: 'FRA', crest: null },
@@ -92,10 +92,10 @@ describe('pollAndSettle', () => {
     expect(finishedCalls).toBe(0) // quota gating: never touch the API outside a window
   })
 
-  it('settles a finished match inside the window and recomputes points for multiple predictions', async () => {
+  it('settles a group match writing hitType/pontosBase/pontosObtidos (10/5/3/0 rules)', async () => {
     await syncFixtures({ client: baseClient([]) })
-    const exact = await seedPrediction(2, 1) // exact => 3
-    const winner = await seedPrediction(1, 0) // home win predicted; real 2-1 => 1
+    const exact = await seedPrediction(2, 1) // exact => 10
+    const winnerDiff = await seedPrediction(1, 0) // home win + diff 1 (real 2-1) => 5
     const wrong = await seedPrediction(0, 2) // away win predicted; real 2-1 => 0
 
     const inWindow = new Date('2026-06-11T22:00:00.000Z') // kickoff + 2h
@@ -113,14 +113,14 @@ describe('pollAndSettle', () => {
     expect(match.resultadoFonte).toBe('api')
 
     const exactPred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: exact.membership.id } })
-    expect(exactPred.pontosObtidos).toBe(3)
-    const winnerPred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: winner.membership.id } })
-    expect(winnerPred.pontosObtidos).toBe(1)
+    expect(exactPred).toMatchObject({ hitType: 'exact', pontosBase: 10, pontosObtidos: 10 })
+    const winnerDiffPred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: winnerDiff.membership.id } })
+    expect(winnerDiffPred).toMatchObject({ hitType: 'winner_and_diff', pontosBase: 5, pontosObtidos: 5 })
     const wrongPred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: wrong.membership.id } })
-    expect(wrongPred.pontosObtidos).toBe(0)
+    expect(wrongPred).toMatchObject({ hitType: 'miss', pontosBase: 0, pontosObtidos: 0 })
   })
 
-  it('a member with NO prediction row for a settled match contributes 0 (absence-of-row, CONTRACT §11.6)', async () => {
+  it('a member with NO prediction gets the automatic 0x0 fallback row (official rule)', async () => {
     await syncFixtures({ client: baseClient([]) })
     const { match, membership } = await seedMemberWithoutPrediction()
 
@@ -130,13 +130,52 @@ describe('pollAndSettle', () => {
       client: baseClient([finishedMatch(2, 1)]),
     })
 
-    // The match settles, but no prediction row is created for the absent member.
     expect(result.settledMatchIds).toHaveLength(1)
     const settled = await prisma.match.findFirstOrThrow({ where: { id: match.id } })
     expect(settled.status).toBe('encerrada')
 
     const rows = await prisma.prediction.findMany({ where: { membershipId: membership.id } })
-    expect(rows).toHaveLength(0) // no row => no points => the member scores 0
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      palpiteHome: 0,
+      palpiteAway: 0,
+      palpiteAutomatico: true,
+      hitType: 'miss', // 0x0 vs 2x1
+      pontosObtidos: 0,
+    })
+  })
+
+  it('the 0x0 fallback scores as a normal hit when the match actually ends 0x0', async () => {
+    await syncFixtures({ client: baseClient([]) })
+    const { membership } = await seedMemberWithoutPrediction()
+
+    const inWindow = new Date('2026-06-11T22:00:00.000Z')
+    await pollAndSettle({ now: inWindow, client: baseClient([finishedMatch(0, 0)]) })
+
+    const rows = await prisma.prediction.findMany({ where: { membershipId: membership.id } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      palpiteAutomatico: true,
+      hitType: 'exact',
+      pontosBase: 10,
+      pontosObtidos: 10, // grupos 1x
+    })
+  })
+
+  it('applies the phase multiplier on settlement (R16 exact 1x1 after ET => 15, penalties ignored)', async () => {
+    await syncFixtures({ client: baseClient([], 'LAST_16') })
+    const exact = await seedPrediction(1, 1) // exact 1x1 on oitavas => 10 * 1.5 = 15
+
+    const inWindow = new Date('2026-06-11T22:00:00.000Z')
+    // fullTime excludes penalties: a 1-1 decided on penalties arrives as 1-1.
+    const result = await pollAndSettle({
+      now: inWindow,
+      client: baseClient([finishedMatch(1, 1, 'LAST_16')], 'LAST_16'),
+    })
+
+    expect(result.settledMatchIds).toHaveLength(1)
+    const pred = await prisma.prediction.findFirstOrThrow({ where: { membershipId: exact.membership.id } })
+    expect(pred).toMatchObject({ hitType: 'exact', pontosBase: 10, pontosObtidos: 15 })
   })
 
   it('never overwrites a manual result', async () => {

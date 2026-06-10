@@ -28,7 +28,8 @@ function Avatar({ nome, image }: { nome: string; image: string | null }) {
 
 /**
  * Detailed ranking (SPEC §6): position, avatar, name, pontos, nº de cravadas,
- * with the leader (first row) highlighted. Presentational only — UI never
+ * with the leader (first row) highlighted. AI participants carry a 🤖 "IA"
+ * badge (emoji + text, never color-only). Presentational only — UI never
  * imports prisma (CONTRACT §2); rows arrive pre-sorted from computeStandings.
  */
 export function RankingTable({ rows }: { rows: RankingRow[] }) {
@@ -69,6 +70,15 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                 <span className="flex min-w-0 items-center gap-2">
                   <Avatar nome={row.nome} image={row.image} />
                   <span className="min-w-0 break-words">{row.nome}</span>
+                  {row.isAi ? (
+                    <span
+                      data-badge="ia"
+                      className="shrink-0 rounded bg-surface-muted px-1.5 py-0.5 text-xs font-semibold text-ink-soft"
+                      title="Participante de inteligência artificial (não concorre ao prêmio)"
+                    >
+                      <span aria-hidden="true">🤖 </span>IA
+                    </span>
+                  ) : null}
                 </span>
               </td>
               <td className="px-2 py-2 text-right" data-cell="pontos">

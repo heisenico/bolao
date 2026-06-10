@@ -14,6 +14,8 @@ function row(
     pontos: partial.pontos ?? 0,
     cravadas: partial.cravadas ?? 0,
     acertosVencedor: partial.acertosVencedor ?? 0,
+    acertouCampeao: partial.acertouCampeao ?? false,
+    isAi: partial.isAi ?? false,
     joinedAt: partial.joinedAt ?? new Date("2026-06-01T00:00:00.000Z"),
     image: partial.image ?? null,
   };
@@ -51,6 +53,25 @@ describe("compareRankingRows", () => {
     expect(compareRankingRows(b, a)).toBeLessThan(0);
   });
 
+  it("breaks pontos+cravadas+acertos tie by champion prize hit (tiebreaker #4)", () => {
+    const a = row({
+      membershipId: "a",
+      pontos: 10,
+      cravadas: 3,
+      acertosVencedor: 4,
+      acertouCampeao: false,
+    });
+    const b = row({
+      membershipId: "b",
+      pontos: 10,
+      cravadas: 3,
+      acertosVencedor: 4,
+      acertouCampeao: true,
+    });
+    expect(compareRankingRows(a, b)).toBeGreaterThan(0); // b first
+    expect(compareRankingRows(b, a)).toBeLessThan(0);
+  });
+
   it("breaks full tie by earliest joinedAt asc", () => {
     const early = new Date("2026-05-01T00:00:00.000Z");
     const late = new Date("2026-05-02T00:00:00.000Z");
@@ -70,6 +91,18 @@ describe("compareRankingRows", () => {
     });
     expect(compareRankingRows(a, b)).toBeGreaterThan(0); // b (earlier) first
     expect(compareRankingRows(b, a)).toBeLessThan(0);
+  });
+
+  it("champion hit outranks earlier joinedAt (tiebreaker #4 comes before #5)", () => {
+    const early = new Date("2026-05-01T00:00:00.000Z");
+    const late = new Date("2026-05-02T00:00:00.000Z");
+    const earlyJoiner = row({ membershipId: "early", joinedAt: early });
+    const champion = row({
+      membershipId: "champ",
+      joinedAt: late,
+      acertouCampeao: true,
+    });
+    expect(rankRows([earlyJoiner, champion])[0].membershipId).toBe("champ");
   });
 
   it("returns 0 only when every tiebreaker is equal", () => {

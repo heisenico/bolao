@@ -1,8 +1,7 @@
 import { PaymentStatus, type PoolMembership } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { OwnershipError } from '@/server/admin'
-import type { RankingRow } from '@/domain/ranking'
-import { computePrize, pickWinner } from '@/domain/prize'
+import { computePrize, pickPrizeWinners, type PrizeRankedRow } from '@/domain/prize'
 import { computeStandings } from '@/server/ranking'
 
 /**
@@ -59,15 +58,16 @@ export async function confirmPayment(membershipId: string, adminId: string): Pro
 }
 
 /**
- * Winner-takes-all prize summary (CONTRACT §4 / §6 signature). The pot counts
- * ONLY confirmed entries: total = (# memberships with paymentStatus=confirmado)
- * * pool.valorEntrada (integer BRL cents). winner = top ranked row.
- * computeStandings is already tiebreaker-sorted, so it is passed straight to
- * pickWinner — no re-sort here.
+ * Prize summary (official rules): the pot counts ONLY confirmed entries —
+ * total = (# memberships with paymentStatus=confirmado) * pool.valorEntrada
+ * (integer BRL cents) — and the top 3 HUMANS split it 60/30/10, cascading past
+ * any AI rows. computeStandings is already tiebreaker-sorted, so it is passed
+ * straight to pickPrizeWinners — no re-sort here. The app only reports the
+ * winners; the organizer pays via PIX outside the app.
  */
 export async function prizeSummary(
   poolId: string,
-): Promise<{ total: number; winner: RankingRow | null }> {
+): Promise<{ total: number; winners: PrizeRankedRow[] }> {
   const pool = await prisma.pool.findUniqueOrThrow({ where: { id: poolId } })
   const confirmedEntriesCount = await prisma.poolMembership.count({
     where: { poolId, paymentStatus: PaymentStatus.confirmado },
@@ -75,7 +75,7 @@ export async function prizeSummary(
   const total = computePrize(confirmedEntriesCount, pool.valorEntrada)
 
   const standings = await computeStandings(poolId)
-  const winner = pickWinner(standings)
+  const winners = pickPrizeWinners(standings)
 
-  return { total, winner }
+  return { total, winners }
 }

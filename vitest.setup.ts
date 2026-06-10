@@ -38,6 +38,8 @@ if (!UNIT_ONLY) {
     // exist, so these are live typed deletes (prediction → paymentRecord →
     // poolMembership → pool → match → team → auth models).
     await prisma.prediction.deleteMany();
+    await prisma.prizePrediction.deleteMany();
+    await prisma.prizeResult.deleteMany();
     await prisma.paymentRecord.deleteMany();
     await prisma.poolMembership.deleteMany();
     await prisma.pool.deleteMany();

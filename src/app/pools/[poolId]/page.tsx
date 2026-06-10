@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { LOCK_LEAD_MS, isMatchLocked } from "@/domain/deadline";
+import {
+  LOCK_LEAD_MS,
+  isKnockoutNotYetOpen,
+  isMatchLocked,
+} from "@/domain/deadline";
 import { getMembership } from "@/server/pools";
+import { getDeadlineContext } from "@/server/deadlines";
 import { Flag } from "@/components/Flag";
 import { AppNav } from "@/components/AppNav";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -38,6 +43,7 @@ export default async function PoolDashboardPage({
 
   const isOwner = pool.ownerId === session.user.id;
   const now = new Date();
+  const { openingKickoffUtc } = await getDeadlineContext();
 
   const nextMatches = await prisma.match.findMany({
     where: { status: { in: ["agendada", "ao_vivo"] } },
@@ -70,8 +76,19 @@ export default async function PoolDashboardPage({
         ) : (
           <ul className="flex flex-col gap-3">
             {nextMatches.map((m) => {
-              const locked = isMatchLocked(m.dataHora, now);
-              const deadline = new Date(m.dataHora.getTime() - LOCK_LEAD_MS);
+              const locked = isMatchLocked(
+                m.fase,
+                m.dataHora,
+                openingKickoffUtc,
+                now
+              );
+              // The real edit deadline: group matches lock together at Block A
+              // close (opening kickoff - 1h); knockout 1h before own kickoff.
+              const deadline =
+                m.fase === "grupos" && openingKickoffUtc
+                  ? new Date(openingKickoffUtc.getTime() - LOCK_LEAD_MS)
+                  : new Date(m.dataHora.getTime() - LOCK_LEAD_MS);
+              const notYetOpen = isKnockoutNotYetOpen(m.fase, now);
               const done = predicted.has(m.id);
               return (
                 <li
@@ -108,7 +125,11 @@ export default async function PoolDashboardPage({
                       {done ? "palpite feito" : "palpite pendente"}
                     </span>
                     <span className="text-ink-muted">
-                      {locked ? "travado" : "aberto"}
+                      {locked
+                        ? "travado"
+                        : notYetOpen
+                          ? "abre 20/06"
+                          : "aberto"}
                     </span>
                   </div>
                 </li>

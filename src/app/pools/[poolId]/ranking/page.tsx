@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { getMembership } from "@/server/pools";
-import { computeStandings } from "@/server/ranking";
+import { getPrizeWinners } from "@/server/ranking";
 import { RankingTable } from "@/components/RankingTable";
+import { PrizeWinners } from "@/components/PrizeWinners";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { AppNav } from "@/components/AppNav";
 
@@ -20,7 +21,10 @@ export default async function RankingPage({
   const membership = await getMembership(poolId, session.user.id);
   if (!membership) redirect("/dashboard");
 
-  const rows = await computeStandings(poolId);
+  // Standings annotated with prize positions: the table shows everyone (AIs
+  // included, badged); the Premiados section shows only the prized humans.
+  const rows = await getPrizeWinners(poolId);
+  const winners = rows.filter((r) => r.humanPrizeRank !== null);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-6">
@@ -28,6 +32,7 @@ export default async function RankingPage({
       <AutoRefresh />
       <h1 className="text-2xl font-bold">Ranking</h1>
       <RankingTable rows={rows} />
+      <PrizeWinners winners={winners} />
     </main>
   );
 }

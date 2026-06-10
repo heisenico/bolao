@@ -14,11 +14,11 @@ The job to be done: enter score predictions before each deadline, trust that sco
 
 ## Product Purpose
 
-Bolão da Copa 2026 lets a group of friends predict scores for FIFA World Cup 2026 matches, scores those predictions automatically against real results, and shows a live ranking — plus a knockout bracket and semi-manual PIX payment tracking.
+Bolão da Copa 2026 lets a group of friends predict scores for FIFA World Cup 2026 matches (plus five FIFA prize picks), scores those predictions automatically against real results, and shows a live ranking — plus a knockout bracket and semi-manual PIX payment tracking. AI participants (Claude, ChatGPT…) can join as scored guests.
 
-Scoring is deliberately simple: exact score = 3 pts, correct winner/draw only = 1 pt, wrong or no prediction = 0 pts. Predictions can be edited until 1 hour before kickoff, then lock; they stay hidden from other players until lock (anti-copy). Results come from a football data API (polled by an external scheduler only during match windows) with manual admin override taking priority.
+Scoring follows the official "Clássico Gradativo": exact score = 10 pts, correct winner + goal difference = 5, correct winner/draw only = 3, miss or no prediction = 0 (an absent pick becomes an automatic 0×0), multiplied by phase (groups 1×, R32/R16 1.5×, QF/SF 2×, third place/final 3×). Five FIFA prize picks (champion 30, top scorer 20, goalkeeper 15, best player 15, runner-up 10) add to the total once the organizer confirms the official results. Group-stage picks and the first four prize picks lock 1h before the opening match (Block A); knockout picks open 20/06 and lock 1h before each kickoff, with the runner-up pick closing before the first R32 match (Block B). Predictions stay hidden from other players until they lock (anti-copy). Results come from a football data API (polled by an external scheduler only during match windows) with manual admin override taking priority.
 
-The app **never moves, custodies, or transfers money** — it only records who paid and calculates the winner-takes-all prize; the organizer pays the winner by PIX outside the app. This is a deliberate scope choice that keeps the project out of regulatory and financial risk.
+The app **never moves, custodies, or transfers money** — it only records who paid and reports the prize split: the top 3 humans take 60% / 30% / 10% of the pot (AI guest participants rank but never win money); the organizer pays by PIX outside the app. This is a deliberate scope choice that keeps the project out of regulatory and financial risk.
 
 Success looks like: friends predict in seconds without confusion, nobody disputes the scoring or the deadlines, and the ranking is something they actually want to check during the tournament.
 

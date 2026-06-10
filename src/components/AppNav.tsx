@@ -16,6 +16,7 @@ export function AppNav({ poolId }: { poolId: string }) {
   const links = [
     { href: `/pools/${poolId}`, label: "Início" },
     { href: `/pools/${poolId}/palpites`, label: "Palpites" },
+    { href: `/pools/${poolId}/premios`, label: "Prêmios" },
     { href: `/pools/${poolId}/ranking`, label: "Ranking" },
     { href: `/pools/${poolId}/bracket`, label: "Mata-mata" },
     { href: "/dashboard", label: "Meus bolões" },
