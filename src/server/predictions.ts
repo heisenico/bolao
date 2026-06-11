@@ -40,6 +40,17 @@ export async function upsertPrediction(args: {
   if (!match) {
     throw new Error(`Match not found: ${args.matchId}`)
   }
+  // A result can land BEFORE the time window closes (e.g. an early W.O. entered
+  // manually). Once the match leaves agendada/adiada its predictions are
+  // settled; accepting an edit would leave a pick newer than its own score —
+  // and a later rescore would re-score it against an already-known result.
+  if (
+    match.status === 'encerrada' ||
+    match.status === 'cancelada' ||
+    match.status === 'ao_vivo'
+  ) {
+    throw new PredictionLockedError(args.matchId)
+  }
   const { openingKickoffUtc } = await getDeadlineContext()
   if (!isPredictionOpen(match.fase, match.dataHora, openingKickoffUtc, now)) {
     throw new PredictionLockedError(args.matchId)
@@ -103,7 +114,9 @@ export async function hasPredictedEntirePhase(
  * While the match can still be edited (or, for a knockout match, before its
  * window even opens), only the viewer's own prediction is returned (anti-copy).
  * Once locked — Block A close for group matches, kickoff - 1h for knockout —
- * all members' predictions are returned.
+ * every prediction FROM THE VIEWER'S POOL is returned. Matches are global rows
+ * shared across pools, so without the pool scope the reveal would leak other
+ * pools' members and picks.
  */
 export async function getVisiblePredictions(
   matchId: string,
@@ -114,9 +127,18 @@ export async function getVisiblePredictions(
   if (!match) {
     throw new Error(`Match not found: ${matchId}`)
   }
+  const viewer = await prisma.poolMembership.findUnique({
+    where: { id: viewerMembershipId },
+    select: { poolId: true },
+  })
+  if (!viewer) {
+    throw new Error(`Membership not found: ${viewerMembershipId}`)
+  }
   const { openingKickoffUtc } = await getDeadlineContext()
   if (isMatchLocked(match.fase, match.dataHora, openingKickoffUtc, now)) {
-    return prisma.prediction.findMany({ where: { matchId } })
+    return prisma.prediction.findMany({
+      where: { matchId, membership: { poolId: viewer.poolId } },
+    })
   }
   return prisma.prediction.findMany({
     where: { matchId, membershipId: viewerMembershipId },

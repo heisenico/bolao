@@ -180,17 +180,16 @@ export default async function PalpitesPage({
     ])
   );
   lockedMatches.forEach((m, i) => {
+    // getVisiblePredictions already scopes the reveal to this pool's members.
     revealedByMatch.set(
       m.id,
-      visibleByMatch[i]
-        .filter((p) => nameById.has(p.membershipId)) // members of THIS pool only
-        .map((p) => ({
-          membershipId: p.membershipId,
-          nome: nameById.get(p.membershipId) ?? "Participante",
-          palpiteHome: p.palpiteHome,
-          palpiteAway: p.palpiteAway,
-          palpiteAutomatico: p.palpiteAutomatico,
-        }))
+      visibleByMatch[i].map((p) => ({
+        membershipId: p.membershipId,
+        nome: nameById.get(p.membershipId) ?? "Participante",
+        palpiteHome: p.palpiteHome,
+        palpiteAway: p.palpiteAway,
+        palpiteAutomatico: p.palpiteAutomatico,
+      }))
     );
   });
 

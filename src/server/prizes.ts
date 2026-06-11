@@ -11,6 +11,22 @@ export class PrizePredictionLockedError extends Error {
   }
 }
 
+/** Server-side bound for a pick/result value (the UI caps inputs at the same). */
+export const MAX_PRIZE_VALUE_LENGTH = 80
+
+function assertValidPrizeValue(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    throw new Error('Palpite inválido: escolha um valor.')
+  }
+  if (trimmed.length > MAX_PRIZE_VALUE_LENGTH) {
+    throw new Error(
+      `Palpite inválido: máximo de ${MAX_PRIZE_VALUE_LENGTH} caracteres.`,
+    )
+  }
+  return trimmed
+}
+
 /**
  * Create or update the caller's pick for one FIFA prize. Window enforced in UTC
  * (PrizePredictionLockedError outside it): champion/top_scorer/best_goalkeeper/
@@ -23,10 +39,7 @@ export async function upsertPrizePrediction(args: {
   value: string
   now?: Date
 }): Promise<PrizePrediction> {
-  const value = args.value.trim()
-  if (!value) {
-    throw new Error('Palpite inválido: escolha um valor.')
-  }
+  const value = assertValidPrizeValue(args.value)
 
   const now = args.now ?? new Date()
   const deadlines = await getDeadlineContext()
@@ -75,10 +88,7 @@ export async function applyPrizeResult(
   prizeType: PrizeType,
   value: string,
 ): Promise<void> {
-  const officialValue = value.trim()
-  if (!officialValue) {
-    throw new Error('Resultado inválido: informe o vencedor oficial.')
-  }
+  const officialValue = assertValidPrizeValue(value)
 
   await prisma.$transaction(async (tx) => {
     await tx.prizeResult.upsert({

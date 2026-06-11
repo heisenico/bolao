@@ -106,6 +106,24 @@ describe('predictions service (integration)', () => {
     ).rejects.toBeInstanceOf(PredictionLockedError)
   })
 
+  it('upsertPrediction rejects an early-settled match even while the time window is open (W.O.)', async () => {
+    const kickoff = new Date('2026-06-11T20:00:00.000Z')
+    const now = new Date('2026-06-11T15:00:00.000Z') // 5h before -> window open
+    const match = await seedMatch(kickoff)
+    // An early walkover entered manually: result known before the lock.
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { placarHome: 3, placarAway: 0, status: 'encerrada', resultadoFonte: 'manual' },
+    })
+
+    await expect(
+      upsertPrediction({ membershipId: memberAId, matchId: match.id, palpiteHome: 3, palpiteAway: 0, now }),
+    ).rejects.toBeInstanceOf(PredictionLockedError)
+
+    const count = await prisma.prediction.count({ where: { matchId: match.id } })
+    expect(count).toBe(0)
+  })
+
   it('upsertPrediction throws for an unknown match id', async () => {
     const now = new Date('2026-06-11T15:00:00.000Z')
     await expect(
@@ -179,6 +197,32 @@ describe('predictions service (integration)', () => {
     const visible = await getVisiblePredictions(match.id, memberAId, lockedNow)
     const ids = visible.map((p) => p.membershipId).sort()
     expect(ids).toEqual([memberAId, memberBId].sort())
+  })
+
+  it('getVisiblePredictions reveals ONLY the viewer pool members (matches are shared across pools)', async () => {
+    const kickoff = new Date('2026-06-11T20:00:00.000Z')
+    const openNow = new Date('2026-06-11T15:00:00.000Z')
+    const lockedNow = new Date('2026-06-11T19:30:00.000Z')
+    const match = await seedMatch(kickoff)
+
+    // A SECOND pool whose member also predicted the same global match.
+    const otherOwner = await prisma.user.create({ data: { email: `oo-${Date.now()}@test.dev` } })
+    const otherPool = await createPool({
+      ownerId: otherOwner.id,
+      nome: 'Outro bolão',
+      valorEntrada: 1000,
+      chavePix: 'oo@pix',
+    })
+    const otherUser = await prisma.user.create({ data: { email: `ou-${Date.now()}@test.dev` } })
+    const otherMember = await joinPool({ inviteCode: otherPool.inviteCode, userId: otherUser.id, now: openNow })
+
+    await upsertPrediction({ membershipId: memberAId, matchId: match.id, palpiteHome: 2, palpiteAway: 1, now: openNow })
+    await upsertPrediction({ membershipId: otherMember.id, matchId: match.id, palpiteHome: 0, palpiteAway: 0, now: openNow })
+
+    const visible = await getVisiblePredictions(match.id, memberAId, lockedNow)
+    const ids = visible.map((p) => p.membershipId)
+    expect(ids).toContain(memberAId)
+    expect(ids).not.toContain(otherMember.id)
   })
 
   it('getVisiblePredictions throws for an unknown match id', async () => {

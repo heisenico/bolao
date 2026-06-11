@@ -128,6 +128,17 @@ describe('upsertPrizePrediction windows', () => {
       }),
     ).rejects.toThrow(/inválido/i)
   })
+
+  it('rejects a value longer than 80 characters (server-side bound)', async () => {
+    await expect(
+      upsertPrizePrediction({
+        membershipId: memberId,
+        prizeType: 'golden_ball',
+        value: 'x'.repeat(81),
+        now: BLOCK_A_OPEN,
+      }),
+    ).rejects.toThrow(/80/)
+  })
 })
 
 describe('applyPrizeResult (admin-manual settlement)', () => {

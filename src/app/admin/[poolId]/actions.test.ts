@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import {
+  applyPrizeResultAsOwner,
   applyResultAsOwner,
   cancelMatchAsOwner,
   confirmPaymentAsOwner,
   removeMemberAsOwner,
   syncFixturesAsOwner,
-} from './actions'
+} from '@/server/adminOps'
 import { OwnershipError } from '@/server/admin'
 
 async function fixture() {
@@ -117,5 +118,23 @@ describe('removeMemberAsOwner', () => {
     await removeMemberAsOwner(owner.id, pool.id, playerMember.id)
     const gone = await prisma.poolMembership.findUnique({ where: { id: playerMember.id } })
     expect(gone).toBeNull()
+  })
+})
+
+describe('applyPrizeResultAsOwner', () => {
+  it('owner settles a prize result', async () => {
+    const { owner, pool } = await fixture()
+    await applyPrizeResultAsOwner(owner.id, pool.id, 'champion', 'Brasil')
+    const result = await prisma.prizeResult.findUniqueOrThrow({ where: { prizeType: 'champion' } })
+    expect(result.value).toBe('Brasil')
+    expect(result.pointsValue).toBe(30)
+  })
+
+  it('non-owner cannot settle a prize result', async () => {
+    const { stranger, pool } = await fixture()
+    await expect(
+      applyPrizeResultAsOwner(stranger.id, pool.id, 'champion', 'Brasil'),
+    ).rejects.toBeInstanceOf(OwnershipError)
+    expect(await prisma.prizeResult.count()).toBe(0)
   })
 })
