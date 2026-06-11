@@ -2,6 +2,7 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { EntryClosedError, joinPool, getMembership } from "@/server/pools";
 import { formatCentsBRL } from "@/lib/money";
+import { CopyButton } from "@/components/CopyButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { markPaidAction } from "./actions";
 
@@ -50,42 +51,64 @@ export default async function JoinPoolPage({
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-10">
       <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
 
-      <section className="flex flex-col gap-2 rounded-md border border-border bg-surface-soft p-4">
-        <h2 className="text-lg font-semibold">Pagamento via PIX</h2>
-        <p>
-          Valor de entrada: <strong>{formatCentsBRL(pool.valorEntrada)}</strong>
-        </p>
-        <p>
-          Chave PIX: <strong className="break-all">{pool.chavePix}</strong>
-        </p>
-        <ol className="list-decimal pl-5 text-sm text-ink-soft">
-          <li>Abra o app do seu banco e faça o PIX para a chave acima.</li>
-          <li>Confira o valor de entrada.</li>
-          <li>
-            Depois de pagar, clique em &quot;Já paguei&quot; para avisar o
-            organizador.
-          </li>
-        </ol>
-      </section>
+      <p className="rounded-md bg-accent/10 p-3 text-sm font-semibold text-accent-strong">
+        ✓ Você está dentro! Já pode fazer seus palpites.
+      </p>
 
-      <section className="flex flex-col gap-2">
-        <p className="text-sm">
-          Status do pagamento:{" "}
-          <strong>{membership?.paymentStatus ?? "pendente"}</strong>
-        </p>
-        {membership?.paymentStatus === "pendente" ? (
-          <form action={markPaidAction}>
-            <input type="hidden" name="membershipId" value={membership.id} />
-            <input type="hidden" name="code" value={code} />
-            <SubmitButton pendingLabel="Registrando...">Já paguei</SubmitButton>
-          </form>
-        ) : (
-          <p className="text-sm text-accent-strong">
-            Pagamento registrado. Aguarde a confirmação do organizador.
-          </p>
-        )}
-      </section>
+      {pool.valorEntrada > 0 ? (
+        <>
+          <section className="flex flex-col gap-2 rounded-md border border-border bg-surface-soft p-4">
+            <h2 className="text-lg font-semibold">Pagamento via PIX</h2>
+            <p>
+              Valor de entrada:{" "}
+              <strong className="text-xl">{formatCentsBRL(pool.valorEntrada)}</strong>
+            </p>
+            <p className="break-all">
+              Chave PIX: <strong>{pool.chavePix}</strong>
+            </p>
+            <div>
+              <CopyButton text={pool.chavePix ?? ""} label="Copiar chave PIX" />
+            </div>
+            <p className="text-sm text-ink-strong">
+              Pague o valor via PIX para o organizador e depois toque em
+              &quot;Já paguei&quot;. O pagamento não trava seus palpites — dá
+              para palpitar desde já.
+            </p>
+          </section>
 
+          <section className="flex flex-col gap-2">
+            {membership?.paymentStatus === "pendente" ? (
+              <form action={markPaidAction}>
+                <input type="hidden" name="membershipId" value={membership.id} />
+                <input type="hidden" name="code" value={code} />
+                <SubmitButton pendingLabel="Registrando...">Já paguei</SubmitButton>
+              </form>
+            ) : membership?.paymentStatus === "pago" ? (
+              <p
+                role="status"
+                className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"
+              >
+                ⏳ Pagamento informado — aguardando confirmação do organizador.
+              </p>
+            ) : (
+              <p
+                role="status"
+                className="rounded-md bg-accent/10 p-3 text-sm font-semibold text-accent-strong"
+              >
+                ✓ Pagamento confirmado.
+              </p>
+            )}
+          </section>
+        </>
+      ) : (
+        <p className="text-sm text-ink-strong">
+          Este bolão não tem valor de entrada — nada a pagar, só palpitar. 🎉
+        </p>
+      )}
+
+      <a href={`/pools/${pool.id}/palpites`} className="text-accent-strong underline">
+        Fazer meus palpites
+      </a>
       <a href={`/pools/${pool.id}`} className="text-accent-strong underline">
         Ir para o bolão
       </a>

@@ -47,7 +47,8 @@ describe('pools service (integration)', () => {
 
     const ownerMembership = await getMembership(pool.id, ownerId)
     expect(ownerMembership).not.toBeNull()
-    expect(ownerMembership?.paymentStatus).toBe('pendente')
+    // The creator never pays themself: their membership starts confirmed.
+    expect(ownerMembership?.paymentStatus).toBe('confirmado')
   })
 
   it('createPool generates distinct invite codes across pools', async () => {

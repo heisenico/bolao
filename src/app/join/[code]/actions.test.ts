@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { createPool, joinPool } from '@/server/pools'
-import { markPaidAsUser } from './actions'
+import { markPaidAsUser } from '@/server/payments'
 
 describe('markPaidAsUser self-ownership (integration)', () => {
   let ownerUserId: string
@@ -39,10 +39,11 @@ describe('markPaidAsUser self-ownership (integration)', () => {
     expect(membership.paymentStatus).toBe('pendente')
   })
 
-  it('flips to pago when the membership owner marks paid', async () => {
+  it('flips to pago and stamps pagamentoReportadoEm when the membership owner marks paid', async () => {
     await markPaidAsUser(ownerUserId, membershipId)
 
     const membership = await prisma.poolMembership.findUniqueOrThrow({ where: { id: membershipId } })
     expect(membership.paymentStatus).toBe('pago')
+    expect(membership.pagamentoReportadoEm).toBeInstanceOf(Date)
   })
 })

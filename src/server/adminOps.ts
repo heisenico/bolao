@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { OwnershipError, removeMember } from '@/server/admin'
 import { applyManualResult, cancelMatch, syncFixtures } from '@/server/results'
 import { applyPrizeResult } from '@/server/prizes'
-import { confirmPayment } from '@/server/payments'
+import { confirmPayment, revertPaymentToPending } from '@/server/payments'
+import { updatePoolPaymentSettings } from '@/server/pools'
 
 // Owner-gated admin operations with EXPLICIT caller ids, for the form actions
 // and for tests. Deliberately NOT in a 'use server' module: every export of a
@@ -74,4 +75,25 @@ export async function applyPrizeResultAsOwner(
 ): Promise<void> {
   await assertOwner(callerUserId, poolId)
   await applyPrizeResult(prizeType, value)
+}
+
+/** "Marcar como não pago": creator rejects a report / undoes a confirmation. */
+export async function revertPaymentAsOwner(
+  callerUserId: string,
+  poolId: string,
+  membershipId: string,
+): Promise<void> {
+  await assertOwner(callerUserId, poolId)
+  await revertPaymentToPending(membershipId, callerUserId)
+}
+
+/** Edit entry fee / Pix key — only while Block A is open (gated inside). */
+export async function updatePoolPaymentAsOwner(
+  callerUserId: string,
+  poolId: string,
+  valorEntrada: number,
+  chavePix: string | null,
+): Promise<void> {
+  await assertOwner(callerUserId, poolId)
+  await updatePoolPaymentSettings({ poolId, valorEntrada, chavePix })
 }

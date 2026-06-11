@@ -5,6 +5,8 @@ import { getAdminPool, OwnershipError } from "@/server/admin";
 import { prizeSummary } from "@/server/payments";
 import { getMatchesForAdmin, type AdminMatch } from "@/server/results";
 import { getPrizeResults } from "@/server/prizes";
+import { getDeadlineContext } from "@/server/deadlines";
+import { isBlockAOpen } from "@/domain/deadline";
 import { env } from "@/lib/env";
 import { inviteUrl, whatsappShareUrl } from "@/domain/share";
 import {
@@ -23,7 +25,9 @@ import {
   cancelMatchAction,
   confirmPaymentAction,
   removeMemberAction,
+  revertPaymentAction,
   syncFixturesAction,
+  updatePoolPaymentAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -107,6 +111,22 @@ export default async function AdminPage({
   const prizeResults = await getPrizeResults();
   const resultByType = new Map(prizeResults.map((r) => [r.prizeType, r]));
   const teams = await prisma.team.findMany({ orderBy: { nome: "asc" } });
+
+  const { openingKickoffUtc } = await getDeadlineContext();
+  const blockAOpen = isBlockAOpen(openingKickoffUtc, new Date());
+
+  // Payment triage groups (the creator's checklist). The owner's own
+  // membership is auto-confirmed and carries no actions.
+  const isPaidPool = pool.valorEntrada > 0;
+  const reported = pool.memberships.filter((m) => m.paymentStatus === "pago");
+  const pending = pool.memberships.filter(
+    (m) => m.paymentStatus === "pendente"
+  );
+  const confirmed = pool.memberships.filter(
+    (m) => m.paymentStatus === "confirmado"
+  );
+  const memberName = (m: (typeof pool.memberships)[number]) =>
+    m.user.name ?? m.user.email ?? "Participante";
 
   // Shared <option> list: the result form and the cancel form both pick from
   // the same set of matches, so build the elements once and reuse them.
@@ -290,37 +310,207 @@ export default async function AdminPage({
         </ul>
       </section>
 
-      {/* Members + payments (CONTRACT §7) */}
+      {/* Pix payment triage (Addendum 1): reported first (action needed),
+          then pending, then confirmed. Status is private — only this screen
+          and each member's own banner ever show it. */}
+      {isPaidPool ? (
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="text-lg font-bold">
+            Pagamentos
+            {reported.length > 0 ? (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                {reported.length} a confirmar
+              </span>
+            ) : null}
+          </h2>
+
+          {reported.length > 0 ? (
+            <div className="mt-3">
+              <h3 className="text-sm font-semibold">Avisaram que pagaram</h3>
+              <p className="mt-1 text-xs text-ink-muted">
+                Confira no extrato do seu banco se o PIX caiu antes de
+                confirmar — o app não consegue verificar a transferência.
+              </p>
+              <ul className="mt-2 divide-y divide-surface-muted">
+                {reported.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"
+                  >
+                    <span className="min-w-0 break-words text-sm">
+                      {memberName(m)}
+                      {m.pagamentoReportadoEm ? (
+                        <span className="ml-2 text-xs text-ink-muted">
+                          avisou em {formatSaoPaulo(m.pagamentoReportadoEm)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="flex gap-2">
+                      <form action={confirmPaymentAction}>
+                        <input type="hidden" name="poolId" value={poolId} />
+                        <input type="hidden" name="membershipId" value={m.id} />
+                        <SubmitButton pendingLabel="Confirmando...">
+                          Confirmar
+                        </SubmitButton>
+                      </form>
+                      <form action={revertPaymentAction}>
+                        <input type="hidden" name="poolId" value={poolId} />
+                        <input type="hidden" name="membershipId" value={m.id} />
+                        <SubmitButton variant="secondary" pendingLabel="Revertendo...">
+                          Marcar como não pago
+                        </SubmitButton>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold">Ainda não pagaram</h3>
+            {pending.length === 0 ? (
+              <p className="mt-1 text-sm text-ink-muted">Ninguém pendente. 🎉</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-surface-muted">
+                {pending.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"
+                  >
+                    <span className="min-w-0 break-words text-sm">{memberName(m)}</span>
+                    {/* Cheap shortcut: confirm directly someone who paid but
+                        forgot to tap "já paguei". */}
+                    <form action={confirmPaymentAction}>
+                      <input type="hidden" name="poolId" value={poolId} />
+                      <input type="hidden" name="membershipId" value={m.id} />
+                      <SubmitButton variant="secondary" pendingLabel="Confirmando...">
+                        Confirmar mesmo assim
+                      </SubmitButton>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold">Confirmados</h3>
+            {confirmed.length === 0 ? (
+              <p className="mt-1 text-sm text-ink-muted">Nenhum ainda.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-surface-muted">
+                {confirmed.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"
+                  >
+                    <span className="min-w-0 break-words text-sm">
+                      {memberName(m)}
+                      {m.userId === pool.ownerId ? (
+                        <span className="ml-2 text-xs text-ink-muted">
+                          (você, organizador)
+                        </span>
+                      ) : null}
+                    </span>
+                    {m.userId !== pool.ownerId ? (
+                      <form action={revertPaymentAction}>
+                        <input type="hidden" name="poolId" value={poolId} />
+                        <input type="hidden" name="membershipId" value={m.id} />
+                        <SubmitButton variant="secondary" pendingLabel="Revertendo...">
+                          Marcar como não pago
+                        </SubmitButton>
+                      </form>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="text-lg font-bold">Pagamentos</h2>
+          <p className="mt-2 text-sm text-ink-muted">
+            Bolão sem valor de entrada — sem controle de pagamentos.
+          </p>
+        </section>
+      )}
+
+      {/* Entry fee / Pix key editing — only while Block A is open. */}
+      <section className="rounded-lg border border-border p-4">
+        <h2 className="text-lg font-bold">Entrada e PIX</h2>
+        {blockAOpen ? (
+          <form
+            action={updatePoolPaymentAction}
+            className="mt-3 flex flex-wrap items-end gap-2"
+          >
+            <input type="hidden" name="poolId" value={poolId} />
+            <label className="flex flex-col text-sm">
+              Valor de entrada (R$)
+              <input
+                type="text"
+                name="valorEntrada"
+                inputMode="decimal"
+                pattern="\d+([.,]\d{1,2})?"
+                defaultValue={(pool.valorEntrada / 100).toFixed(2).replace(".", ",")}
+                className="w-28 rounded-md border border-border p-2"
+              />
+            </label>
+            <label className="flex min-w-0 grow flex-col text-sm">
+              Chave PIX
+              <input
+                type="text"
+                name="chavePix"
+                maxLength={140}
+                defaultValue={pool.chavePix ?? ""}
+                placeholder="vazio em bolão sem entrada"
+                className="rounded-md border border-border p-2"
+              />
+            </label>
+            <SubmitButton pendingLabel="Salvando...">Salvar</SubmitButton>
+            <p className="w-full text-xs text-ink-muted">
+              Editável até 1h antes da abertura. Quem ainda não pagou passa a
+              ver os novos valores.
+            </p>
+          </form>
+        ) : (
+          <p className="mt-2 text-sm text-ink-muted">
+            O Bloco A encerrou — valor de entrada e chave PIX não mudam mais
+            ({formatCentsBRL(pool.valorEntrada)}
+            {pool.chavePix ? ` · ${pool.chavePix}` : ""}).
+          </p>
+        )}
+      </section>
+
+      {/* Members (CONTRACT §7). Removal only while Block A is open — late
+          entry is forbidden, so a removal after lock could not be undone. */}
       <section className="rounded-lg border border-border p-4">
         <h2 className="text-lg font-bold">Participantes</h2>
         <ul className="mt-3 divide-y divide-surface-muted">
           {pool.memberships.map((m) => (
             <li key={m.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2">
               <span className="min-w-0 break-words text-sm">
-                {m.user.name ?? m.user.email}
+                {memberName(m)}
                 <span className="ml-2 text-xs text-ink-muted">[{PAYMENT_STATUS_LABEL[m.paymentStatus]}]</span>
               </span>
-              <span className="flex gap-2">
-                {m.paymentStatus !== "confirmado" && (
-                  <form action={confirmPaymentAction}>
-                    <input type="hidden" name="poolId" value={poolId} />
-                    <input type="hidden" name="membershipId" value={m.id} />
-                    <SubmitButton pendingLabel="Confirmando...">Confirmar pagamento</SubmitButton>
-                  </form>
-                )}
-                {m.userId !== pool.ownerId && (
-                  <form action={removeMemberAction}>
-                    <input type="hidden" name="poolId" value={poolId} />
-                    <input type="hidden" name="membershipId" value={m.id} />
-                    <SubmitButton variant="danger" pendingLabel="Removendo...">
-                      Remover
-                    </SubmitButton>
-                  </form>
-                )}
-              </span>
+              {m.userId !== pool.ownerId && blockAOpen && (
+                <form action={removeMemberAction}>
+                  <input type="hidden" name="poolId" value={poolId} />
+                  <input type="hidden" name="membershipId" value={m.id} />
+                  <SubmitButton variant="danger" pendingLabel="Removendo...">
+                    Remover
+                  </SubmitButton>
+                </form>
+              )}
             </li>
           ))}
         </ul>
+        {!blockAOpen ? (
+          <p className="mt-2 text-xs text-ink-muted">
+            Remoções encerraram junto com o Bloco A.
+          </p>
+        ) : null}
       </section>
 
       {/* Invite / share (CONTRACT §8 admin invite section) */}

@@ -1,6 +1,7 @@
 import { Prisma, type Pool, type PoolMembership } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { LOCK_LEAD_MS } from '@/domain/deadline'
+import { LOCK_LEAD_MS, isBlockAOpen } from '@/domain/deadline'
+import { getDeadlineContext } from '@/server/deadlines'
 
 const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous I/O/0/1
 const INVITE_LENGTH = 6
@@ -31,24 +32,75 @@ async function generateUniqueInviteCode(): Promise<string> {
   throw new Error('Could not generate a unique invite code after 10 attempts')
 }
 
+/**
+ * Validates the entry-fee pair: a paid pool (valorEntrada > 0) requires a Pix
+ * key; a free pool (0) carries none — the whole payment flow is hidden for it.
+ * Returns the normalized chavePix (trimmed, or null for a free pool).
+ */
+function normalizePaymentSettings(valorEntrada: number, chavePix: string | null): string | null {
+  if (!Number.isInteger(valorEntrada) || valorEntrada < 0) {
+    throw new Error('Valor de entrada inválido: use um valor em reais maior ou igual a zero.')
+  }
+  const trimmed = chavePix?.trim() ?? ''
+  if (valorEntrada > 0 && !trimmed) {
+    throw new Error('Informe a chave PIX (obrigatória quando há valor de entrada).')
+  }
+  return valorEntrada > 0 ? trimmed : null
+}
+
 export async function createPool(args: {
   ownerId: string
   nome: string
-  valorEntrada: number // BRL cents
-  chavePix: string
+  valorEntrada: number // BRL cents; 0 = free pool
+  chavePix: string | null
 }): Promise<Pool> {
+  const chavePix = normalizePaymentSettings(args.valorEntrada, args.chavePix)
   const inviteCode = await generateUniqueInviteCode()
   const pool = await prisma.pool.create({
     data: {
       nome: args.nome,
       valorEntrada: args.valorEntrada,
-      chavePix: args.chavePix,
+      chavePix,
       inviteCode,
       owner: { connect: { id: args.ownerId } },
-      memberships: { create: { userId: args.ownerId } },
+      // The creator never pays themself: their membership starts confirmed,
+      // so their entry counts in the pot without a self Pix transfer.
+      memberships: { create: { userId: args.ownerId, paymentStatus: 'confirmado' } },
     },
   })
   return pool
+}
+
+/** Thrown when an edit/removal is attempted after the Block A deadline. */
+export class BlockAClosedError extends Error {
+  constructor(message = 'O prazo do Bloco A já encerrou (1h antes do jogo de abertura).') {
+    super(message)
+    this.name = 'BlockAClosedError'
+  }
+}
+
+/**
+ * Creator edits the entry fee / Pix key. Allowed only while Block A is open —
+ * after entry closes, changing the stakes would distort a locked pool. Members
+ * still pendente naturally see the updated values on next load. Ownership is
+ * asserted by the caller (adminOps), like the other owner-gated mutations.
+ */
+export async function updatePoolPaymentSettings(args: {
+  poolId: string
+  valorEntrada: number // BRL cents
+  chavePix: string | null
+  now?: Date
+}): Promise<Pool> {
+  const chavePix = normalizePaymentSettings(args.valorEntrada, args.chavePix)
+  const now = args.now ?? new Date()
+  const { openingKickoffUtc } = await getDeadlineContext()
+  if (!isBlockAOpen(openingKickoffUtc, now)) {
+    throw new BlockAClosedError()
+  }
+  return prisma.pool.update({
+    where: { id: args.poolId },
+    data: { valorEntrada: args.valorEntrada, chavePix },
+  })
 }
 
 export async function joinPool(args: {

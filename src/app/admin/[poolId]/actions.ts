@@ -4,13 +4,16 @@ import type { PrizeType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { requireSession } from '@/lib/session'
 import { PRIZE_TYPES } from '@/domain/awards'
+import { reaisToCents } from '@/lib/money'
 import {
   applyPrizeResultAsOwner,
   applyResultAsOwner,
   cancelMatchAsOwner,
   confirmPaymentAsOwner,
   removeMemberAsOwner,
+  revertPaymentAsOwner,
   syncFixturesAsOwner,
+  updatePoolPaymentAsOwner,
 } from '@/server/adminOps'
 
 // 'use server' form-action entrypoints ONLY. Every export of this file is a
@@ -57,6 +60,26 @@ export async function removeMemberAction(formData: FormData): Promise<void> {
 export async function syncFixturesAction(formData: FormData): Promise<void> {
   const poolId = String(formData.get('poolId'))
   await syncFixturesAsOwner(await currentUserId(), poolId)
+  revalidatePath(`/admin/${poolId}`)
+}
+
+export async function revertPaymentAction(formData: FormData): Promise<void> {
+  const poolId = String(formData.get('poolId'))
+  const membershipId = String(formData.get('membershipId'))
+  await revertPaymentAsOwner(await currentUserId(), poolId, membershipId)
+  revalidatePath(`/admin/${poolId}`)
+}
+
+export async function updatePoolPaymentAction(formData: FormData): Promise<void> {
+  const poolId = String(formData.get('poolId'))
+  const valorEntrada = reaisToCents(String(formData.get('valorEntrada') ?? '0'))
+  const chavePixRaw = String(formData.get('chavePix') ?? '').trim()
+  await updatePoolPaymentAsOwner(
+    await currentUserId(),
+    poolId,
+    valorEntrada,
+    chavePixRaw === '' ? null : chavePixRaw,
+  )
   revalidatePath(`/admin/${poolId}`)
 }
 

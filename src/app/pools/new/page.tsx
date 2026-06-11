@@ -28,14 +28,14 @@ export default async function NewPoolPage() {
             name="valorEntrada"
             type="text"
             inputMode="decimal"
-            required
             pattern="\d+([.,]\d{1,2})?"
             aria-describedby="valor-hint"
             placeholder="25,00"
             className="rounded-md border border-border px-3 py-2"
           />
           <small id="valor-hint" className="text-xs text-ink-muted">
-            Use vírgula para os centavos, ex.: 25,00.
+            Use vírgula para os centavos, ex.: 25,00. Deixe vazio (ou 0) para um
+            bolão sem entrada.
           </small>
         </label>
 
@@ -44,11 +44,15 @@ export default async function NewPoolPage() {
           <input
             name="chavePix"
             type="text"
-            required
             maxLength={140}
+            aria-describedby="pix-hint"
             placeholder="email@pix ou telefone ou aleatória"
             className="rounded-md border border-border px-3 py-2"
           />
+          <small id="pix-hint" className="text-xs text-ink-muted">
+            Obrigatória quando há valor de entrada — é para ela que o pessoal
+            faz o PIX.
+          </small>
         </label>
 
         <SubmitButton pendingLabel="Criando...">Criar bolão</SubmitButton>

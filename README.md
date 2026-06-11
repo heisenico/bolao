@@ -89,10 +89,16 @@ ao prêmio**: se uma IA terminar em 1º, os 3 melhores humanos levam os
 
 ## Dinheiro (PIX, semi-manual)
 
-1. O organizador define **valor de entrada** e **chave PIX** ao criar o bolão.
-2. Cada participante paga por fora e marca **"já paguei"**.
-3. O organizador confirma; só entradas confirmadas compõem o prêmio.
-4. O app **mostra** os premiados e as porcentagens; o repasse é manual, via
+1. O organizador define **valor de entrada** e **chave PIX** ao criar o bolão
+   (ou deixa **0** para um bolão sem entrada — todo o fluxo de pagamento some).
+2. Cada participante paga por fora — a tela de pagamento mostra o valor, a
+   chave com botão de copiar e o **"Já paguei"**. Pagar **nunca trava os
+   palpites**: dá para palpitar desde o primeiro segundo.
+3. O organizador confere o extrato e confirma (ou marca como não pago, se o
+   aviso foi engano). Só entradas confirmadas compõem o prêmio.
+4. O status de pagamento é **privado** — cada um vê só o seu; nada de
+   constrangimento público.
+5. O app **mostra** os premiados e as porcentagens; o repasse é manual, via
    PIX, fora do app.
 
 > O app só registra e calcula — não custodia nem transfere valores.

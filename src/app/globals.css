@@ -120,3 +120,11 @@ textarea::placeholder {
     scroll-behavior: auto !important;
   }
 }
+
+/* Mobile bottom tab bar (AppNav): keep page content clear of the fixed bar,
+   including the iOS home-indicator safe area. */
+@media (max-width: 767px) {
+  body:has(nav[data-bottom-tabs]) main {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}

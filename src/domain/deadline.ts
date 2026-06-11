@@ -67,6 +67,19 @@ export function isKnockoutNotYetOpen(fase: Fase, now: Date = new Date()): boolea
 }
 
 /**
+ * Block A window: pool entry, member removal, and entry-fee/Pix edits are
+ * allowed only while it is open (until 1h before the opening match). Null
+ * openingKickoffUtc (fixtures not synced) keeps it open.
+ */
+export function isBlockAOpen(
+  openingKickoffUtc: Date | null,
+  now: Date = new Date(),
+): boolean {
+  if (openingKickoffUtc === null) return true;
+  return now.getTime() < openingKickoffUtc.getTime() - LOCK_LEAD_MS;
+}
+
+/**
  * Editing window for a FIFA prize pick.
  * runner_up (Block B): from 20/06 00:00 BRT until 1h before the first R32
  *   kickoff. `firstR32KickoffUtc` null (R32 pairings not synced yet) keeps it

@@ -122,8 +122,8 @@ model Pool {
   inviteCode   String           @unique
   ownerId      String
   owner        User             @relation("PoolOwner", fields: [ownerId], references: [id])
-  valorEntrada Int              // BRL cents
-  chavePix     String
+  valorEntrada Int              // BRL cents; 0 = free pool (payment flow hidden)
+  chavePix     String?          // required iff valorEntrada > 0 (enforced server-side)
   status       PoolStatus       @default(aberto)
   createdAt    DateTime         @default(now())
   memberships  PoolMembership[]
@@ -136,7 +136,11 @@ model PoolMembership {
   pool          Pool          @relation(fields: [poolId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt      DateTime      @default(now())   // tiebreaker
+  // pendente -> (member taps "já paguei") pago -> (creator checks bank) confirmado.
+  // pagamentoReportadoEm stamps the member's report; the confirmation timestamp
+  // lives on PaymentRecord.confirmadoEm.
   paymentStatus PaymentStatus @default(pendente)
+  pagamentoReportadoEm DateTime?
   predictions   Prediction[]
   prizePredictions PrizePrediction[]
   payments      PaymentRecord[]

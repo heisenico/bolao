@@ -37,13 +37,23 @@ export default async function PoolDashboardPage({
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    select: { nome: true, ownerId: true },
+    select: { nome: true, ownerId: true, valorEntrada: true },
   });
   if (!pool) redirect("/dashboard");
 
   const isOwner = pool.ownerId === session.user.id;
   const now = new Date();
   const { openingKickoffUtc } = await getDeadlineContext();
+
+  // Creator's attention badge: how many members reported a Pix and await
+  // confirmation. Members never see each other's payment status.
+  const aConfirmar = isOwner
+    ? await prisma.poolMembership.count({
+        where: { poolId, paymentStatus: "pago" },
+      })
+    : 0;
+  const showPaymentBanner =
+    pool.valorEntrada > 0 && membership.paymentStatus !== "confirmado";
 
   const nextMatches = await prisma.match.findMany({
     where: { status: { in: ["agendada", "ao_vivo"] } },
@@ -65,6 +75,28 @@ export default async function PoolDashboardPage({
       <AppNav poolId={poolId} />
       <AutoRefresh />
       <h1 className="text-2xl font-bold break-words">{pool.nome}</h1>
+
+      {/* Payment nudge (private to the member): yellow while pendente, neutral
+          blue once reported; gone after the organizer confirms. */}
+      {showPaymentBanner ? (
+        membership.paymentStatus === "pendente" ? (
+          <a
+            href={`/pools/${poolId}/pagamento`}
+            data-payment-banner="pendente"
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900"
+          >
+            💸 Pagamento pendente — toque para ver o PIX
+          </a>
+        ) : (
+          <a
+            href={`/pools/${poolId}/pagamento`}
+            data-payment-banner="pago"
+            className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"
+          >
+            ⏳ Pagamento informado — aguardando confirmação do organizador.
+          </a>
+        )
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Próximos jogos</h2>
@@ -147,12 +179,28 @@ export default async function PoolDashboardPage({
           Fazer/editar palpites
         </a>
         {isOwner ? (
-          <a
-            href={`/admin/${poolId}`}
-            className="text-accent-strong underline"
-          >
-            Administrar bolão
-          </a>
+          <>
+            <a
+              href={`/pools/${poolId}/convite`}
+              className="text-accent-strong underline"
+            >
+              Convite e código do bolão
+            </a>
+            <a
+              href={`/admin/${poolId}`}
+              className="inline-flex items-center gap-2 text-accent-strong underline"
+            >
+              Administrar bolão
+              {aConfirmar > 0 ? (
+                <span
+                  data-badge="a-confirmar"
+                  className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 no-underline"
+                >
+                  {aConfirmar} pagamento{aConfirmar > 1 ? "s" : ""} a confirmar
+                </span>
+              ) : null}
+            </a>
+          </>
         ) : null}
       </div>
     </main>

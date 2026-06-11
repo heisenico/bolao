@@ -13,6 +13,63 @@ interface TeamLite {
   bandeira: string | null;
 }
 
+/** Clamp a stepped score to the 0..99 a scoreline can hold. */
+function stepScore(current: string, delta: number): string {
+  const parsed = parseInt(current, 10);
+  const base = Number.isNaN(parsed) ? 0 : parsed;
+  return String(Math.min(99, Math.max(0, base + delta)));
+}
+
+/**
+ * One score field as a thumb-friendly stepper: big −/+ targets (44px) around
+ * a numeric input that still accepts direct typing (inputmode="numeric").
+ */
+function ScoreStepper({
+  name,
+  value,
+  onChange,
+  teamNome,
+}: {
+  name: string;
+  value: string;
+  onChange: (next: string) => void;
+  teamNome: string;
+}) {
+  return (
+    <span className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label={`Diminuir placar de ${teamNome}`}
+        onClick={() => onChange(stepScore(value, -1))}
+        className="h-11 w-11 shrink-0 rounded-md border border-border text-xl font-bold text-ink-soft active:bg-surface-muted"
+      >
+        −
+      </button>
+      <input
+        name={name}
+        type="number"
+        min={0}
+        max={99}
+        step={1}
+        required
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={`Placar de ${teamNome}`}
+        className="h-11 w-12 rounded-md border border-border px-1 text-center text-base"
+      />
+      <button
+        type="button"
+        aria-label={`Aumentar placar de ${teamNome}`}
+        onClick={() => onChange(stepScore(value, 1))}
+        className="h-11 w-11 shrink-0 rounded-md border border-border text-xl font-bold text-ink-soft active:bg-surface-muted"
+      >
+        +
+      </button>
+    </span>
+  );
+}
+
 /**
  * One editable match in the palpites list (unlocked matches only; locked ones are
  * display-only and stay server-rendered). Owns the score inputs and the save.
@@ -46,6 +103,15 @@ export function PalpiteRow({
   const [state, formAction] = useActionState(
     savePalpiteAction,
     SAVE_PALPITE_IDLE
+  );
+
+  // Controlled scores so the steppers and direct typing share one source of
+  // truth; initialized from the saved palpite when there is one.
+  const [homeScore, setHomeScore] = useState(
+    defaultHome !== null ? String(defaultHome) : ""
+  );
+  const [awayScore, setAwayScore] = useState(
+    defaultAway !== null ? String(defaultAway) : ""
   );
 
   // Detect each new save result during render (the sanctioned alternative to a
@@ -91,6 +157,7 @@ export function PalpiteRow({
       <input type="hidden" name="poolId" value={poolId} />
       <input type="hidden" name="matchId" value={matchId} />
 
+      {/* Teams line, then a thumb-friendly stepper line — fits 360px wide. */}
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2 font-semibold">
           <Flag
@@ -100,30 +167,8 @@ export function PalpiteRow({
           />
           <span className="truncate">{home.nome}</span>
         </span>
-        <input
-          name="palpiteHome"
-          type="number"
-          min={0}
-          max={99}
-          step={1}
-          inputMode="numeric"
-          defaultValue={defaultHome ?? ""}
-          aria-label={`Placar de ${home.nome}`}
-          className="w-14 rounded-md border border-border px-2 py-1 text-center"
-        />
-        <span>x</span>
-        <input
-          name="palpiteAway"
-          type="number"
-          min={0}
-          max={99}
-          step={1}
-          inputMode="numeric"
-          defaultValue={defaultAway ?? ""}
-          aria-label={`Placar de ${away.nome}`}
-          className="w-14 rounded-md border border-border px-2 py-1 text-center"
-        />
-        <span className="flex min-w-0 items-center gap-2 font-semibold">
+        <span className="text-sm text-ink-muted">x</span>
+        <span className="flex min-w-0 items-center justify-end gap-2 font-semibold">
           <span className="truncate">{away.nome}</span>
           <Flag
             codigoPais={away.codigoPais}
@@ -131,6 +176,22 @@ export function PalpiteRow({
             className="h-4 w-6 shrink-0 object-cover"
           />
         </span>
+      </div>
+
+      <div className="flex items-center justify-center gap-3">
+        <ScoreStepper
+          name="palpiteHome"
+          value={homeScore}
+          onChange={setHomeScore}
+          teamNome={home.nome}
+        />
+        <span aria-hidden="true">x</span>
+        <ScoreStepper
+          name="palpiteAway"
+          value={awayScore}
+          onChange={setAwayScore}
+          teamNome={away.nome}
+        />
       </div>
 
       <div className="flex items-center justify-between text-sm">
