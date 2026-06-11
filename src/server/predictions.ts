@@ -1,7 +1,6 @@
 import { type Prediction } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isMatchLocked, isPredictionOpen } from '@/domain/deadline'
-import { getDeadlineContext } from '@/server/deadlines'
 
 export class PredictionLockedError extends Error {
   constructor(matchId: string) {
@@ -19,9 +18,9 @@ function assertValidScore(value: number, field: 'palpiteHome' | 'palpiteAway'): 
 
 /**
  * Create or update the caller's prediction for a match. Deadlines enforced in
- * UTC, per the official blocks (PredictionLockedError when outside the window):
- *   group match — until 1h before the OPENING match (Block A close);
- *   knockout match — from 20/06 00:00 BRT until 1h before its own kickoff.
+ * UTC (PredictionLockedError when outside the window):
+ *   group match — until 10 minutes before its own kickoff;
+ *   knockout match — from 20/06 00:00 BRT until 10 minutes before its kickoff.
  * A draw (home === away) is a valid prediction in EVERY phase, knockout included
  * (penalties never count, so knockout matches can end level).
  */
@@ -51,8 +50,7 @@ export async function upsertPrediction(args: {
   ) {
     throw new PredictionLockedError(args.matchId)
   }
-  const { openingKickoffUtc } = await getDeadlineContext()
-  if (!isPredictionOpen(match.fase, match.dataHora, openingKickoffUtc, now)) {
+  if (!isPredictionOpen(match.fase, match.dataHora, now)) {
     throw new PredictionLockedError(args.matchId)
   }
   return prisma.prediction.upsert({
@@ -113,10 +111,9 @@ export async function hasPredictedEntirePhase(
  * Predictions for a match the viewer is allowed to see.
  * While the match can still be edited (or, for a knockout match, before its
  * window even opens), only the viewer's own prediction is returned (anti-copy).
- * Once locked — Block A close for group matches, kickoff - 1h for knockout —
- * every prediction FROM THE VIEWER'S POOL is returned. Matches are global rows
- * shared across pools, so without the pool scope the reveal would leak other
- * pools' members and picks.
+ * Once locked (10 minutes before that match's kickoff) every prediction FROM
+ * THE VIEWER'S POOL is returned. Matches are global rows shared across pools,
+ * so without the pool scope the reveal would leak other pools' members/picks.
  */
 export async function getVisiblePredictions(
   matchId: string,
@@ -134,8 +131,7 @@ export async function getVisiblePredictions(
   if (!viewer) {
     throw new Error(`Membership not found: ${viewerMembershipId}`)
   }
-  const { openingKickoffUtc } = await getDeadlineContext()
-  if (isMatchLocked(match.fase, match.dataHora, openingKickoffUtc, now)) {
+  if (isMatchLocked(match.fase, match.dataHora, now)) {
     return prisma.prediction.findMany({
       where: { matchId, membership: { poolId: viewer.poolId } },
     })

@@ -21,11 +21,13 @@ amigos, fora daqui.
 
 ## O jogo
 
-1. **Entre pelo link de convite** (login sem senha, por e-mail).
-2. **Palpite os 72 jogos da fase de grupos** + os 4 prêmios da FIFA, até 1h
-   antes da abertura.
-3. Em **20/06** abre o mata-mata: palpite cada jogo até 1h antes do apito —
-   e crave também o **vice-campeão**.
+1. **Entre pelo link de convite** (login sem senha, por e-mail) — as
+   inscrições fecham 1h antes da abertura.
+2. **Palpite cada jogo até 10 minutos antes do apito** — dá para criar ou
+   mudar o palpite até quase a escalação. Os 4 prêmios da FIFA (campeão,
+   artilheiro, goleiro, craque) travam 1h antes da abertura.
+3. Em **20/06** abre o mata-mata: palpite cada jogo (até 10 min antes) — e
+   crave também o **vice-campeão**.
 4. O app busca os resultados sozinho, pontua e atualiza o ranking.
 5. No fim, os **3 melhores humanos** dividem o prêmio: **60% / 30% / 10%**.
 
@@ -119,9 +121,10 @@ src/app/      páginas e server actions (App Router)
 
 Fairness de verdade, não de banner:
 
-- Prazos em **UTC, no servidor** — Bloco A trava os grupos 1h antes da
-  abertura; mata-mata abre 20/06 00:00 (Brasília) e cada jogo trava 1h antes
-  do próprio apito. Jogo adiado? O prazo segue o novo horário sozinho.
+- Prazos em **UTC, no servidor** — cada jogo trava 10 minutos antes do
+  próprio apito; o mata-mata abre 20/06 00:00 (Brasília); inscrições, prêmios
+  e ajustes do organizador travam 1h antes da abertura (Bloco A). Jogo
+  adiado? O prazo segue o novo horário sozinho.
 - Palpites **ocultos dos outros até travar** (anti-cópia), revelados só para
   o seu bolão.
 - Cada palpite liquidado guarda `hitType` + `pontosBase` + pontos finais —

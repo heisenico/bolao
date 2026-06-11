@@ -57,8 +57,9 @@ export default async function PremiosPage({
       <h1 className="text-2xl font-bold">Prêmios da Copa</h1>
       <p className="text-sm text-ink-strong">
         Cinco palpites extras que valem pontos no ranking geral. Campeão,
-        artilheiro, goleiro e melhor jogador travam junto com a fase de grupos;
-        o vice-campeão abre em 20/06 e trava antes do mata-mata começar.
+        artilheiro, goleiro e melhor jogador travam 1h antes do jogo de
+        abertura; o vice-campeão abre em 20/06 e trava antes do mata-mata
+        começar.
       </p>
 
       {erro === "travado" ? (

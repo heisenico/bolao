@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@/lib/prisma'
-import { LOCK_LEAD_MS } from '@/domain/deadline'
+import { BLOCK_A_LEAD_MS } from '@/domain/deadline'
 import {
   EntryClosedError,
   createPool,
@@ -103,7 +103,7 @@ describe('pools service (integration)', () => {
     const kickoff = new Date('2026-06-11T20:00:00.000Z')
     await seedFirstMatch(kickoff)
     // now === kickoff - 1h is the boundary: entry is closed.
-    const now = new Date(kickoff.getTime() - LOCK_LEAD_MS)
+    const now = new Date(kickoff.getTime() - BLOCK_A_LEAD_MS)
 
     await expect(
       joinPool({ inviteCode: pool.inviteCode, userId: member.id, now }),
@@ -118,7 +118,7 @@ describe('pools service (integration)', () => {
     const member = await makeUser(`stillopen-${Date.now()}@test.dev`)
     const kickoff = new Date('2026-06-11T20:00:00.000Z')
     await seedFirstMatch(kickoff)
-    const now = new Date(kickoff.getTime() - LOCK_LEAD_MS - 1) // 1ms before the boundary
+    const now = new Date(kickoff.getTime() - BLOCK_A_LEAD_MS - 1) // 1ms before the boundary
 
     const membership = await joinPool({ inviteCode: pool.inviteCode, userId: member.id, now })
     expect(membership.poolId).toBe(pool.id)

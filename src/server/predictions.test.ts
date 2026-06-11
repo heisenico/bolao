@@ -83,17 +83,23 @@ describe('predictions service (integration)', () => {
     expect(count).toBe(1)
   })
 
-  it('upsertPrediction throws PredictionLockedError at the lock boundary (now === kickoff - 1h)', async () => {
+  it('upsertPrediction accepts an edit 11 minutes before kickoff and locks at kickoff - 10min', async () => {
     const kickoff = new Date('2026-06-11T20:00:00.000Z')
-    const now = new Date('2026-06-11T19:00:00.000Z') // exactly kickoff - 1h -> locked
-    const match = await seedMatch(kickoff)
-
+    const stillOpen = new Date('2026-06-11T19:49:00.000Z') // 11 min before -> open
+    const openMatch = await seedMatch(kickoff)
     await expect(
-      upsertPrediction({ membershipId: memberAId, matchId: match.id, palpiteHome: 0, palpiteAway: 0, now }),
+      upsertPrediction({ membershipId: memberAId, matchId: openMatch.id, palpiteHome: 2, palpiteAway: 1, now: stillOpen }),
+    ).resolves.toBeTruthy()
+
+    const now = new Date('2026-06-11T19:50:00.000Z') // exactly kickoff - 10min -> locked
+    await expect(
+      upsertPrediction({ membershipId: memberAId, matchId: openMatch.id, palpiteHome: 0, palpiteAway: 0, now }),
     ).rejects.toBeInstanceOf(PredictionLockedError)
 
-    const count = await prisma.prediction.count({ where: { matchId: match.id } })
-    expect(count).toBe(0)
+    // The locked attempt must not touch the pick saved at 19:49.
+    const pred = await prisma.prediction.findFirstOrThrow({ where: { matchId: openMatch.id } })
+    expect(pred.palpiteHome).toBe(2)
+    expect(pred.palpiteAway).toBe(1)
   })
 
   it('upsertPrediction throws PredictionLockedError after kickoff', async () => {
@@ -188,7 +194,7 @@ describe('predictions service (integration)', () => {
   it('getVisiblePredictions reveals all predictions once the match locks', async () => {
     const kickoff = new Date('2026-06-11T20:00:00.000Z')
     const openNow = new Date('2026-06-11T15:00:00.000Z')
-    const lockedNow = new Date('2026-06-11T19:30:00.000Z') // after lock
+    const lockedNow = new Date('2026-06-11T19:55:00.000Z') // after the 10-min lock
     const match = await seedMatch(kickoff)
 
     await upsertPrediction({ membershipId: memberAId, matchId: match.id, palpiteHome: 2, palpiteAway: 1, now: openNow })
@@ -202,7 +208,7 @@ describe('predictions service (integration)', () => {
   it('getVisiblePredictions reveals ONLY the viewer pool members (matches are shared across pools)', async () => {
     const kickoff = new Date('2026-06-11T20:00:00.000Z')
     const openNow = new Date('2026-06-11T15:00:00.000Z')
-    const lockedNow = new Date('2026-06-11T19:30:00.000Z')
+    const lockedNow = new Date('2026-06-11T19:55:00.000Z')
     const match = await seedMatch(kickoff)
 
     // A SECOND pool whose member also predicted the same global match.
@@ -254,21 +260,21 @@ describe('deadline blocks (integration)', () => {
     memberId = (await joinPool({ inviteCode: pool.inviteCode, userId: uA.id })).id
   })
 
-  it('locks EVERY group match at Block A close (opening kickoff - 1h), not at its own kickoff', async () => {
+  it('keeps EVERY group match editable until 10 minutes before its OWN kickoff', async () => {
     // Opening match 11/06 19:00 UTC; a later group match on 24/06.
     await seedMatchAt('grupos', new Date('2026-06-11T19:00:00.000Z'), 'open')
     const lateGroup = await seedMatchAt('grupos', new Date('2026-06-24T19:00:00.000Z'), 'late')
 
-    // Before Block A close: open.
-    const beforeClose = new Date('2026-06-11T17:59:00.000Z')
+    // Days AFTER the opening match: still open (per-match deadline).
+    const midGroupStage = new Date('2026-06-20T10:00:00.000Z')
     await expect(
-      upsertPrediction({ membershipId: memberId, matchId: lateGroup.id, palpiteHome: 1, palpiteAway: 0, now: beforeClose }),
+      upsertPrediction({ membershipId: memberId, matchId: lateGroup.id, palpiteHome: 1, palpiteAway: 0, now: midGroupStage }),
     ).resolves.toBeTruthy()
 
-    // After Block A close (but days before the late match's own kickoff): locked.
-    const afterClose = new Date('2026-06-12T10:00:00.000Z')
+    // 10 minutes before ITS OWN kickoff: locked.
+    const ownLock = new Date('2026-06-24T18:50:00.000Z')
     await expect(
-      upsertPrediction({ membershipId: memberId, matchId: lateGroup.id, palpiteHome: 2, palpiteAway: 0, now: afterClose }),
+      upsertPrediction({ membershipId: memberId, matchId: lateGroup.id, palpiteHome: 2, palpiteAway: 0, now: ownLock }),
     ).rejects.toBeInstanceOf(PredictionLockedError)
   })
 
@@ -296,18 +302,18 @@ describe('deadline blocks (integration)', () => {
     expect(pred.palpiteAway).toBe(1)
   })
 
-  it('locks each knockout match 1h before its OWN kickoff (later than Block B close)', async () => {
+  it('locks each knockout match 10 minutes before its OWN kickoff (later than Block B close)', async () => {
     await seedMatchAt('grupos', new Date('2026-06-11T19:00:00.000Z'), 'open')
     const r32 = await seedMatchAt('r32', new Date('2026-06-29T19:00:00.000Z'), 'r32')
 
-    // Long after Block B close, still >1h before this match's kickoff: open.
-    const stillOpen = new Date('2026-06-29T17:59:00.000Z')
+    // Long after Block B close, still >10min before this match's kickoff: open.
+    const stillOpen = new Date('2026-06-29T18:49:00.000Z')
     await expect(
       upsertPrediction({ membershipId: memberId, matchId: r32.id, palpiteHome: 2, palpiteAway: 1, now: stillOpen }),
     ).resolves.toBeTruthy()
 
-    // At kickoff - 1h: locked.
-    const ownLock = new Date('2026-06-29T18:00:00.000Z')
+    // At kickoff - 10min: locked.
+    const ownLock = new Date('2026-06-29T18:50:00.000Z')
     await expect(
       upsertPrediction({ membershipId: memberId, matchId: r32.id, palpiteHome: 2, palpiteAway: 1, now: ownLock }),
     ).rejects.toBeInstanceOf(PredictionLockedError)

@@ -1,6 +1,6 @@
 import { Prisma, type Pool, type PoolMembership } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { LOCK_LEAD_MS, isBlockAOpen } from '@/domain/deadline'
+import { BLOCK_A_LEAD_MS, isBlockAOpen } from '@/domain/deadline'
 import { getDeadlineContext } from '@/server/deadlines'
 
 const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous I/O/0/1
@@ -121,11 +121,12 @@ export async function joinPool(args: {
   })
   if (existing) return existing
 
-  // Entry deadline (contract §11.5): a NEW member is rejected once now >= firstKickoff - 1h.
+  // Entry deadline (Block A): a NEW member is rejected once now >= firstKickoff - 1h.
   // firstKickoff = min(Match.dataHora). If no matches exist yet, entry is open.
+  // Match picks lock per-match (10 min); entry keeps the longer 1h lead.
   const firstMatch = await prisma.match.findFirst({ orderBy: { dataHora: 'asc' } })
   if (firstMatch) {
-    const entryDeadline = firstMatch.dataHora.getTime() - LOCK_LEAD_MS
+    const entryDeadline = firstMatch.dataHora.getTime() - BLOCK_A_LEAD_MS
     if (now.getTime() >= entryDeadline) {
       throw new EntryClosedError()
     }

@@ -9,7 +9,6 @@ import {
   isPredictionOpen,
 } from "@/domain/deadline";
 import { getMembership } from "@/server/pools";
-import { getDeadlineContext } from "@/server/deadlines";
 import { getVisiblePredictions } from "@/server/predictions";
 import { Flag } from "@/components/Flag";
 import { PalpiteRow } from "@/components/PalpiteRow";
@@ -112,7 +111,6 @@ export default async function PalpitesPage({
   if (!membership) redirect("/dashboard");
 
   const now = new Date();
-  const { openingKickoffUtc } = await getDeadlineContext();
   const knockoutWindowOpen = now.getTime() >= KNOCKOUT_OPENS_AT_UTC.getTime();
 
   // Current phase = the earliest phase that still has an unfinished match.
@@ -148,10 +146,9 @@ export default async function PalpitesPage({
   const byMatch = new Map(predictions.map((p) => [p.matchId, p]));
 
   // For locked matches, reveal every member's prediction (contract §6
-  // reveal-after-lock). Group matches lock together at Block A close; knockout
-  // matches lock 1h before their own kickoff.
+  // reveal-after-lock). Every match locks 10 minutes before its own kickoff.
   const lockedMatches = matches.filter((m) =>
-    isMatchLocked(m.fase, m.dataHora, openingKickoffUtc, now)
+    isMatchLocked(m.fase, m.dataHora, now)
   );
   const revealedByMatch = new Map<
     string,
@@ -224,12 +221,7 @@ export default async function PalpitesPage({
             <h2 className="text-lg font-semibold">{PHASE_LABEL[fase]}</h2>
 
             {phaseMatches.map((m) => {
-              const open = isPredictionOpen(
-                m.fase,
-                m.dataHora,
-                openingKickoffUtc,
-                now
-              );
+              const open = isPredictionOpen(m.fase, m.dataHora, now);
               const pred = byMatch.get(m.id);
 
               if (open) {

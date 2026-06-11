@@ -1,18 +1,22 @@
 // Pure deadline logic. NO next/* or @prisma/* imports.
-// Official rules use two deadline blocks, enforced server-side in UTC:
-//   Block A — pool entry, the 72 group-stage predictions, and the four FIFA
-//     prizes (champion, top scorer, goalkeeper, golden ball). Open from pool
-//     creation; closes 1h before the OPENING match (all group picks lock then).
-//   Block B — the knockout predictions and the runner-up prize. Opens
-//     20/06/2026 00:00 BRT; the runner-up pick closes 1h before the first R32
-//     kickoff, while each knockout MATCH still locks 1h before its own kickoff.
+// Match picks are per-match: ANY match (group or knockout) can be created or
+// edited until 10 MINUTES before its own kickoff, enforced server-side in UTC.
+// The knockout window still only opens on 20/06 (Block B).
+// Block A keeps a 1-hour lead before the OPENING match for the administrative
+// cutoffs: pool entry, member removal, entry-fee/Pix edits, and the four
+// season-long prize picks (champion, top scorer, goalkeeper, golden ball);
+// the runner-up prize closes 1h before the first R32 kickoff.
 // Deadlines are derived from kickoff times (never stored), so a rescheduled
 // match automatically moves its own lock.
 
 import type { Fase } from "@/domain/scoring";
 import type { PrizeType } from "@/domain/awards";
 
-export const LOCK_LEAD_MS = 60 * 60 * 1000;
+/** A match pick locks this long before ITS OWN kickoff: 10 minutes. */
+export const LOCK_LEAD_MS = 10 * 60 * 1000;
+
+/** Block A cutoffs (entry, prizes, admin edits) lead the opening match by 1h. */
+export const BLOCK_A_LEAD_MS = 60 * 60 * 1000;
 
 /** Block B opens: 20/06/2026 00:00 America/Sao_Paulo (UTC-3) = 03:00 UTC. */
 export const KNOCKOUT_OPENS_AT_UTC = new Date("2026-06-20T03:00:00.000Z");
@@ -21,25 +25,18 @@ const isGroup = (fase: Fase): boolean => fase === "grupos";
 
 /**
  * True while a match's prediction may still be created/edited.
- * Group match: until 1h before the OPENING match (Block A close) — group picks
- *   do NOT stay open until their own kickoff.
- * Knockout match: from Block B open until 1h before its OWN kickoff.
- * `openingKickoffUtc` null (fixtures not synced yet) keeps Block A open.
+ * Group match: from pool creation until 10 minutes before its own kickoff.
+ * Knockout match: from Block B open until 10 minutes before its own kickoff.
  */
 export function isPredictionOpen(
   fase: Fase,
   kickoffUtc: Date,
-  openingKickoffUtc: Date | null,
   now: Date = new Date(),
 ): boolean {
-  if (isGroup(fase)) {
-    if (openingKickoffUtc === null) return true;
-    return now.getTime() < openingKickoffUtc.getTime() - LOCK_LEAD_MS;
+  if (!isGroup(fase) && now.getTime() < KNOCKOUT_OPENS_AT_UTC.getTime()) {
+    return false;
   }
-  return (
-    now.getTime() >= KNOCKOUT_OPENS_AT_UTC.getTime() &&
-    now.getTime() < kickoffUtc.getTime() - LOCK_LEAD_MS
-  );
+  return now.getTime() < kickoffUtc.getTime() - LOCK_LEAD_MS;
 }
 
 /**
@@ -51,13 +48,8 @@ export function isPredictionOpen(
 export function isMatchLocked(
   fase: Fase,
   kickoffUtc: Date,
-  openingKickoffUtc: Date | null,
   now: Date = new Date(),
 ): boolean {
-  if (isGroup(fase)) {
-    if (openingKickoffUtc === null) return false;
-    return now.getTime() >= openingKickoffUtc.getTime() - LOCK_LEAD_MS;
-  }
   return now.getTime() >= kickoffUtc.getTime() - LOCK_LEAD_MS;
 }
 
@@ -76,16 +68,17 @@ export function isBlockAOpen(
   now: Date = new Date(),
 ): boolean {
   if (openingKickoffUtc === null) return true;
-  return now.getTime() < openingKickoffUtc.getTime() - LOCK_LEAD_MS;
+  return now.getTime() < openingKickoffUtc.getTime() - BLOCK_A_LEAD_MS;
 }
 
 /**
- * Editing window for a FIFA prize pick.
+ * Editing window for a FIFA prize pick (1h leads — prize picks are season-long
+ * calls, not match picks, so they keep the Block A/B cutoffs).
  * runner_up (Block B): from 20/06 00:00 BRT until 1h before the first R32
  *   kickoff. `firstR32KickoffUtc` null (R32 pairings not synced yet) keeps it
  *   open — the pairings are published well before the first R32 match.
  * All other prizes (Block A): from pool creation until 1h before the opening
- *   match, exactly like group predictions.
+ *   match.
  */
 export function isPrizePredictionOpen(
   prizeType: PrizeType,
@@ -99,9 +92,8 @@ export function isPrizePredictionOpen(
     if (now.getTime() < KNOCKOUT_OPENS_AT_UTC.getTime()) return false;
     if (deadlines.firstR32KickoffUtc === null) return true;
     return (
-      now.getTime() < deadlines.firstR32KickoffUtc.getTime() - LOCK_LEAD_MS
+      now.getTime() < deadlines.firstR32KickoffUtc.getTime() - BLOCK_A_LEAD_MS
     );
   }
-  if (deadlines.openingKickoffUtc === null) return true;
-  return now.getTime() < deadlines.openingKickoffUtc.getTime() - LOCK_LEAD_MS;
+  return isBlockAOpen(deadlines.openingKickoffUtc, now);
 }

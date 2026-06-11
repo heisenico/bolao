@@ -7,7 +7,6 @@ import {
   isMatchLocked,
 } from "@/domain/deadline";
 import { getMembership } from "@/server/pools";
-import { getDeadlineContext } from "@/server/deadlines";
 import { Flag } from "@/components/Flag";
 import { AppNav } from "@/components/AppNav";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -43,7 +42,6 @@ export default async function PoolDashboardPage({
 
   const isOwner = pool.ownerId === session.user.id;
   const now = new Date();
-  const { openingKickoffUtc } = await getDeadlineContext();
 
   // Creator's attention badge: how many members reported a Pix and await
   // confirmation. Members never see each other's payment status.
@@ -108,18 +106,9 @@ export default async function PoolDashboardPage({
         ) : (
           <ul className="flex flex-col gap-3">
             {nextMatches.map((m) => {
-              const locked = isMatchLocked(
-                m.fase,
-                m.dataHora,
-                openingKickoffUtc,
-                now
-              );
-              // The real edit deadline: group matches lock together at Block A
-              // close (opening kickoff - 1h); knockout 1h before own kickoff.
-              const deadline =
-                m.fase === "grupos" && openingKickoffUtc
-                  ? new Date(openingKickoffUtc.getTime() - LOCK_LEAD_MS)
-                  : new Date(m.dataHora.getTime() - LOCK_LEAD_MS);
+              const locked = isMatchLocked(m.fase, m.dataHora, now);
+              // Every match locks 10 minutes before its own kickoff.
+              const deadline = new Date(m.dataHora.getTime() - LOCK_LEAD_MS);
               const notYetOpen = isKnockoutNotYetOpen(m.fase, now);
               const done = predicted.has(m.id);
               return (
